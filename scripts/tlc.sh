@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Run TLC on one model: scripts/tlc.sh <config> [spec-dir]
+# Fetches the pinned tla2tools.jar on first use and verifies its hash.
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cfg="$1"
+dir="${2:-$root/specs}"
+jar="$root/.tools/tla2tools.jar"
+version="v1.7.4"
+sha="936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
+if [[ ! -f "$jar" ]]; then
+  mkdir -p "$root/.tools"
+  curl -sSfL -o "$jar" "https://github.com/tlaplus/tlaplus/releases/download/$version/tla2tools.jar"
+fi
+echo "$sha  $jar" | shasum -a 256 -c - >/dev/null
+java="${JAVA:-java}"
+meta="$(mktemp -d)"
+trap 'rm -rf "$meta"' EXIT
+cd "$dir"
+"$java" -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto -deadlock \
+  -metadir "$meta" -config "$cfg" MC.tla
