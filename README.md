@@ -777,24 +777,28 @@ live one can be compared.
 
 The scenario (`specs/MCRecovery.tla`) is a root `r` with children `a` and
 `b`. The candidates move the tip at every step: `a`, then `b` (heavier), a
-grind located at `a` that ties them (CID decides), its strengthening, an
-exclusion of `a`, a validation of `b`, and a block fact for `a` with
-different metadata, which the store must refuse. Up to five batches, two
-crashes.
+grind located at `a` that ties them (CID decides), its strengthening, `a`'s
+deferred validation re-stating the strongest grind it holds (as
+`ChainTree.connectJob` builds it), an exclusion of `a`, a validation of `b`,
+and a block fact for `a` with different metadata, which the store must
+refuse. A work batch is staged only if strictly stronger than what is held
+(`addWork` returns a duplicate with no fact otherwise). Up to five batches,
+two crashes.
 
 | Config | Reading |
 |---|---|
-| `MCRecovery_Main.cfg` | the spec's: replay in any order. Staging records the reserved revision as a durable floor, and restore records the restored revision before exposing it |
-| `MCRecovery_Node.cfg` | the implementation's: no floor (lattice-node restores with none), replay in `ChainTree.replay`'s sort order |
+| `MCRecovery_Main.cfg` | the spec's: replay in any order, and staging records the batch's reserved revision (current + 1) as a durable floor |
+| `MCRecovery_Node.cfg` | the implementation's: no floor (lattice-node restores with none), replay in `ChainTree.replay`'s sort order. Every property but `RevisionMonotone`, which fails here (finding below) |
 
 Witnesses, each of which must fail: `MCRecovery_WLost.cfg` reaches a crash
 between durable and visible, after which recovery shows the batch
 (`NoLostBatchRecovered`), and `MCRecovery_WConflict.cfg` reaches the store's
 refusal of conflicting metadata (`NoConflictRefused`).
-`MCRecovery_WOrder.cfg` drops both the floor and the sort, and
+`MCRecovery_WOrder.cfg` drops the floor with replay in any order, and
 `RevisionMonotone` fails: replay that meets a strengthening before the
-weaker observation counts one mutation fewer than live import did. Either
-one is needed.
+weaker observation counts one mutation fewer than live import did. The
+implementation's sort alone does not close this (finding below), so the
+floor is what holds the property.
 
 ### Planted bugs
 
@@ -805,7 +809,7 @@ one is needed.
 | a strengthening adds to the quantity instead of ratcheting it | `ReplayIdempotent` |
 | restore takes the persisted tip instead of reprojecting | `RecoveredEqualsLive` |
 | restore resets the revision | `RevisionMonotone` |
-| the floor is recorded only at staging, not at restore (replay order changes the count) | `RevisionMonotone` |
+| the floor is the pre-stage revision, not the one reserved for the batch | `RevisionMonotone` |
 | only new blocks take a revision | `RevisionAdvances` |
 | the store accepts a block fact with conflicting metadata | `ConflictRejected` |
 | a failed durable write keeps the batch applied | `FailureLeavesGraphUnchanged` |
@@ -813,8 +817,8 @@ one is needed.
 
 ### Finding: revisions can go back across a restart
 
-`MCRecovery_RevisionProbe.cfg` must fail `RevisionMonotone` under the
-implementation's reading. A grind is strengthened at `a` (two work batches,
+Under the implementation's reading `RevisionMonotone` fails;
+`MCRecovery_RevisionProbe.cfg` is the minimal reproduction and must fail. A grind is strengthened at `a` (two work batches,
 each a mutation with its own revision); then `a`'s deferred validation is
 staged as a block batch that re-states the strongest grind the tree holds
 (`ChainTree.connectJob`), which live import applies as a duplicate. Replay
@@ -837,8 +841,9 @@ revision is the API's change counter.
 - **One commit at a time.** The mutation lease covers check, stage and
   apply, so the check cannot go stale before the apply. Preparation outside
   the lease is folded into `Admissible`.
-- **Re-staging an identical batch** is not generated (it would only lengthen
-  the log); `ReplayIdempotent` checks the re-application it would cause.
+- **Re-staging an identical or weaker batch** is not generated (the
+  implementation answers a duplicate with no fact); `ReplayIdempotent`
+  checks the re-application it would cause.
 - **Order of visibility.** The model follows Lattice's commit path (stage,
   then apply). lattice-node's sans-IO core mutates its tree first and emits
   the persist effect before any publish, send or mining effect, stopping the
@@ -850,7 +855,7 @@ revision is the API's change counter.
 - **Static verdicts and prerequisites.** Proof checks, execution and target
   rules are folded into which batches exist and `Admissible`. Orphans
   (blocks staged before their parent) are not generated.
-- **Small scope:** three blocks, eight candidate batches, five durable
+- **Small scope:** three blocks, nine candidate batches, five durable
   batches, two crashes.
 
 ## Roadmap

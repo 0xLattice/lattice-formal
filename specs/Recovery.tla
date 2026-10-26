@@ -171,7 +171,15 @@ Admissible(G, x) ==
                           /\ G.loc[x.g] \in {None, x.b}
                           /\ x.v => /\ x.b \notin G.exc
                                     /\ Parent[x.b] \in G.val \cup {None}
-      [] x.k = "work"  -> x.b \in G.held /\ G.loc[x.g] \in {None, x.b}
+                          \* a held block's batch is its deferred validation,
+                          \* re-stating the strongest grind held there
+                          \* (ChainTree.connectJob)
+                          /\ x.b \in G.held =>
+                                /\ x.v /\ G.loc[x.g] = x.b /\ x.q = G.qty[x.g]
+                                /\ \A g \in Grinds : G.loc[g] = x.b => G.qty[g] <= x.q
+      [] x.k = "work"  -> /\ x.b \in G.held /\ G.loc[x.g] \in {None, x.b}
+                          \* weaker or equal is a duplicate: no fact (addWork)
+                          /\ x.q > G.qty[x.g]
       [] x.k = "excl"  -> /\ x.b \in G.held \ G.val
                           /\ x.b \in Roots => \E r \in Roots \ {x.b} : r \in G.val
       [] x.k = "valid" -> /\ x.b \in G.held \ G.exc
@@ -287,16 +295,13 @@ ReplayOne(i) ==
     /\ UNCHANGED <<log, floor, ptip, tip, up, cur, crashes, seen, lost, refused>>
 
 \* Every durable batch replayed: reproject canonicality, raise the revision
-\* to the durable floor, expose the runtime.  With FloorPersisted the
-\* restored revision is made durable as the floor before it is exposed:
-\* replay in another order may count fewer mutations next time.
+\* to the durable floor, expose the runtime.
 Restore ==
     /\ ~up /\ log # <<>> /\ rec = DOMAIN log
     /\ tip' = CanonicalTip(mem)
     /\ rev' = Max(rev, floor)
-    /\ floor' = IF FloorPersisted THEN Max(rev, floor) ELSE floor
     /\ up' = TRUE
-    /\ UNCHANGED <<log, ptip, mem, cur, rec, crashes, seen, lost, refused>>
+    /\ UNCHANGED <<log, floor, ptip, mem, cur, rec, crashes, seen, lost, refused>>
 
 Init ==
     /\ log = <<>> /\ floor = 0 /\ ptip = None
