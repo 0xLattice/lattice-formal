@@ -1,6 +1,7 @@
 import Std.Data.String.ToNat
 import Std.Data.String.ToInt
 import LatticeProofs.Keys
+import LatticeProofs.MerkleProofs
 
 /-!
 # Encodings that must not collide: proofs (spec §2, §3.5, §3.7, §5.4, §11.1)
@@ -424,5 +425,67 @@ theorem recipient_tag_example (B : Header) :
   have := congrArg List.reverse h
   simp [powPrefix, joinSep, recipientField] at this
 
+
+/-! ## The receipt sub-state's commitment through the real path (§3.5, §6.5, §12.1) -/
+
+/-- §3.5: the receipt path is injective on the keys in play, unless SHA-256
+collides on two of their (finitely many) preimages. -/
+theorem receiptPath_injOn {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256) {S : List ReceiptKey}
+    (hH : NoCollision H (InPlayInput S) (InPlayInput S)) :
+    Merkle.InjOn (receiptPath H) (InPlay S) := by
+  intro k k' hk hk' h
+  have := hH _ _ ⟨k, hk, rfl⟩ ⟨k', hk', rfl⟩ (hex64_inj (hw _) (hw _) h)
+  simp only [receiptPreimage, List.append_cancel_left_eq] at this
+  exact receiptText_inj hk.1 hk'.1 this
+
+/-- §6.5, §12.1 with `ReceiptKey.storageKey` itself as the trie key: the root
+after a block's receipt writes commits to exactly the receipts `applyReceipts`
+produces, at their receipt paths. The hypotheses on hashing are only that
+SHA-256 has no collision among the receipt preimages in play (`hH`) and among
+the trie nodes the writes touch (`hT`). -/
+theorem receipts_commit_path {D : Type} {T : Merkle.Enc Char Address D → D}
+    (ho : Merkle.StrictOrder Char) {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256)
+    {S : List ReceiptKey} (hH : NoCollision H (InPlayInput S) (InPlayInput S))
+    {m m' : Lattice.Map ReceiptKey Address} {as : List Action}
+    {s p p' : Merkle.Root Char Address D} (hP : Merkle.ReceiptKeysIn (InPlay S) as)
+    (hs : s.Canon) (hr : Merkle.Represents (receiptPath H) (InPlay S) s.toMap m)
+    (hd : p.digest T = s.digest T)
+    (hT : Merkle.NoCollision T (Merkle.Root.RunHasEnc T (Merkle.receiptWrites (receiptPath H) as) p)
+      (Merkle.Root.RunHasEnc T (Merkle.receiptWrites (receiptPath H) as) s))
+    (hp : p.applyAll (Merkle.receiptWrites (receiptPath H) as) = some p')
+    (hm : applyReceipts m as = some m') :
+    ∃ M', Merkle.Commits T (p'.digest T) M' ∧ Merkle.Represents (receiptPath H) (InPlay S) M' m' :=
+  Merkle.receipts_commit ho (receiptPath_injOn hw hH) hP hs hr hd hT hp hm
+
+/-- The collision-extraction form: the commitment holds, or two distinct
+receipt preimages in play have the same SHA-256. -/
+theorem receipts_commit_path_or_collision {D : Type} {T : Merkle.Enc Char Address D → D}
+    (ho : Merkle.StrictOrder Char) {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256)
+    {S : List ReceiptKey} {m m' : Lattice.Map ReceiptKey Address} {as : List Action}
+    {s p p' : Merkle.Root Char Address D} (hP : Merkle.ReceiptKeysIn (InPlay S) as)
+    (hs : s.Canon) (hr : Merkle.Represents (receiptPath H) (InPlay S) s.toMap m)
+    (hd : p.digest T = s.digest T)
+    (hT : Merkle.NoCollision T (Merkle.Root.RunHasEnc T (Merkle.receiptWrites (receiptPath H) as) p)
+      (Merkle.Root.RunHasEnc T (Merkle.receiptWrites (receiptPath H) as) s))
+    (hp : p.applyAll (Merkle.receiptWrites (receiptPath H) as) = some p')
+    (hm : applyReceipts m as = some m') :
+    (∃ M', Merkle.Commits T (p'.digest T) M' ∧
+        Merkle.Represents (receiptPath H) (InPlay S) M' m') ∨
+      ∃ x y, InPlayInput S x ∧ InPlayInput S y ∧ x ≠ y ∧ H x = H y := by
+  by_cases hc : ∃ x y, InPlayInput S x ∧ InPlayInput S y ∧ x ≠ y ∧ H x = H y
+  · exact Or.inr hc
+  · exact Or.inl (receipts_commit_path ho hw (fun x y hx hy he =>
+      Classical.byContradiction fun hne => hc ⟨x, y, hx, hy, hne, he⟩) hP hs hr hd hT hp hm)
+
+/-- The hashing hypothesis is satisfiable, unlike global injectivity: for two
+keys in play, a toy `H` (the preimage length) has no collision among their
+preimages, so `receiptPath_injOn` applies. -/
+theorem inPlay_noCollision_example :
+    NoCollision (fun x => x.length % 2 ^ 256)
+      (InPlayInput [⟨"a", "d", 1, 2⟩, ⟨"bb", "d", 1, 2⟩])
+      (InPlayInput [⟨"a", "d", 1, 2⟩, ⟨"bb", "d", 1, 2⟩]) := by
+  rintro x y ⟨k, ⟨-, hk⟩, rfl⟩ ⟨k', ⟨-, hk'⟩, rfl⟩ he
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hk hk'
+  rcases hk with rfl | rfl <;> rcases hk' with rfl | rfl <;> first | rfl | (revert he; decide)
 
 end Lattice.Keys

@@ -200,4 +200,14 @@ def receiptPath (H : Text → Nat) (k : ReceiptKey) : Text := hex64 (H (receiptP
 /-- The receipt preimages of keys the grammar admits. -/
 def ReceiptInput (x : Text) : Prop := ∃ k : ReceiptKey, ValidDirectory k.directory.toList ∧ x = receiptPreimage k
 
+/-- The receipt keys in play for one block (`S`: the keys of `prevState`'s
+receipt map and of the block's receipt actions) that meet the directory
+grammar. -/
+def InPlay (S : List ReceiptKey) (k : ReceiptKey) : Prop :=
+  ValidDirectory k.directory.toList ∧ k ∈ S
+
+/-- Their receipt preimages: a finite set. -/
+def InPlayInput (S : List ReceiptKey) (x : Text) : Prop :=
+  ∃ k, InPlay S k ∧ x = receiptPreimage k
+
 end Lattice.Keys

@@ -103,4 +103,8 @@ section
 #print axioms cid_example
 #print axioms cid_padding_refused
 #print axioms recipient_tag_example
+#print axioms receiptPath_injOn
+#print axioms receipts_commit_path
+#print axioms receipts_commit_path_or_collision
+#print axioms inPlay_noCollision_example
 end

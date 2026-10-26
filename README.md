@@ -690,7 +690,7 @@ strict total order.
 | `witness_digest`, `witness_live`: the partial trie that resolves only a write's path and the nodes of the children along it has the same root, and the write succeeds on it with the same result (this witness resolves more than cashew's `proof()`, see below) | §6.1 |
 | `applyAll_sound`, `applyAll_correct`, `batch_eq_fold`: the same for writes one after another; a batch result that is canonical and holds the map the writes make is the sequential result | §6.1 |
 | `commits_empty`, `commits_unique`, `block_commits`, `chain_commits`, `chain_from_empty`: from the empty root, a chain of blocks, each verified against a partial trie of the root the last one left, ends at the root of the canonical trie of the map its writes make | §12.1 |
-| `receipts_commit`: tied to the value model for the receipt sub-state: the root after a block's receipt writes commits to exactly the receipts `applyReceipts` produces | §6.5, §12.1 |
+| `receipts_commit`: tied to the value model for the receipt sub-state: the root after a block's receipt writes commits to exactly the receipts `applyReceipts` produces, for any storage-key encoding injective on the keys in play (instantiated with the real hashed path by `receipts_commit_path`) | §6.5, §12.1 |
 
 Abstracted: the DAG-CBOR bytes and the CID's multibase text (a node's digest
 is `H` of its fields); SHA-256's collision resistance (the `NoCollision`
@@ -925,6 +925,7 @@ digits, `%0.16lx` four times.
 | `depositText_inj`: the `DepositKey` text is injective for every demander | §3.7 |
 | `receiptText_inj`, `receiptText_inj_of_demander`, `receiptText_collision`: the `ReceiptKey` text is injective when the directory has no `/`, and also when the demander has none; with neither ban, `a/b`,`c` and `a`,`b/c` collide | §3.5, §3.7 |
 | `receiptPath_inj`: on grammar-valid keys the receipt path is injective, unless SHA-256 collides on two receipt preimages (`NoCollision`, as in the Merkle proofs) | §3.5 |
+| `receiptPath_injOn`, `receipts_commit_path`, `receipts_commit_path_or_collision`: the receipt sub-state commits through `ReceiptKey.storageKey` itself, unless SHA-256 collides among the receipt preimages in play or the trie nodes touched | §3.5, §6.5, §12.1 |
 | `receiptPreimage_ne`, `receiptPath_separated`: no receipt preimage is visible-ASCII text, so a receipt path is never the hash of a state key or key text, unless SHA-256 collides between them; the domain's `0x00` is what does it | §3.5 |
 
 Readings:
@@ -937,13 +938,18 @@ Readings:
   the theorem requires it only to state the format. The `0x01` tag is what
   separates absent from present-empty; a canonical address is never empty,
   so on structurally valid blocks the tag is defence in depth.
-- **`receipts_commit` is not discharged.** It assumes `Function.Injective`
-  of the storage-key encoding over all `ReceiptKey`s. The real encoding is
-  injective only on grammar-valid keys (`receiptText_collision`) and, being a
-  hash, only under `NoCollision`, so a version of `receipts_commit` over
-  injectivity on the keys at hand is left open. `Swap.lean` keys its maps by
-  the `ReceiptKey` structure, which `receiptText_inj` justifies on valid
-  keys.
+- **`receipts_commit` through the real path.** `receipts_commit` assumed
+  `Function.Injective` of the storage-key encoding, which no hash satisfies
+  (a 256-bit digest of unbounded keys collides), so the theorem was vacuous
+  for `ReceiptKey.storageKey`. It now assumes injectivity only on the keys in
+  play (`InjOn enc P`, with `Represents` read on `P`), and
+  `receipts_commit_path` instantiates it with `receiptPath` itself: the
+  remaining hashing hypotheses are that SHA-256 has no collision among the
+  finitely many receipt preimages in play and among the trie nodes the
+  writes touch; `receipts_commit_path_or_collision` is the collision form,
+  and `inPlay_noCollision_example` shows the hypothesis satisfiable.
+  `Swap.lean` keys its maps by the `ReceiptKey` structure, which
+  `receiptText_inj` justifies on valid keys.
 
 Not modelled: the DAG-CBOR bytes behind a CID (a digest is any 256-bit
 number), non-standard CIDs (CIDv0 and other codecs, refused in headers), and
@@ -966,6 +972,7 @@ proofs stop building:
 | no separator between `amountDemanded` and `nonce` in `DepositKey` | `depositText_inj` |
 | a directory may contain `/` | `receiptText_inj` |
 | the receipt-state domain separator is dropped | `receiptPreimage_ne` |
+| the receipt path hashes the `DepositKey` text (directory omitted) | `receiptPath_injOn` |
 | a CID's padding bits are not checked (a second spelling decodes) | `cid_encode_decode` |
 
 ## Roadmap
