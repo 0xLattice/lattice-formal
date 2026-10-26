@@ -129,7 +129,7 @@ def check(path, skip=()):
 
 
 def selftest(path):
-    """Corrupt a passing trace three ways; each must be caught."""
+    """Corrupt a passing trace four ways; each must be caught."""
     import copy
     base = json.loads(path.read_text())
     ok, line = check(path)
@@ -146,13 +146,17 @@ def selftest(path):
         b = next(iter(e["after"]["cumulative"]))
         e["after"]["cumulative"][b] = str(int(e["after"]["cumulative"][b]) + 1)
         return "CumulativeMatches"
+    def validated_tip(t):
+        e = next(e for e in t["events"] if e["after"]["validatedTip"] is not None)
+        e["after"]["validatedTip"] = None
+        return "ValidatedTipMatches"
     def accepted(t):
         e = next(e for e in t["events"] if e["kind"] in ("validate", "exclude"))
         e["accepted"] = not e["accepted"]
         return "not a spec step"
     results = []
     with tempfile.TemporaryDirectory() as d:
-        for corrupt in (weight, cumulative, accepted):
+        for corrupt in (weight, cumulative, validated_tip, accepted):
             t = copy.deepcopy(base)
             expect = corrupt(t)
             q = pathlib.Path(d) / f"trace-{corrupt.__name__}.json"

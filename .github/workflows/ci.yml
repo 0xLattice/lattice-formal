@@ -48,12 +48,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # ValidatedTipMatches is skipped while the known root-level divergence
-      # (README, "Trace validation") is open.
       - name: The trace checker catches corrupted traces
-        run: python3 scripts/trace_check.py --selftest traces/lattice-3ebc126/trace-2.json
+        run: python3 scripts/trace_check.py --selftest traces/lattice-53.2.0/trace-2.json
       - name: Implementation traces conform to the spec
-        run: python3 scripts/trace_check.py --skip ValidatedTipMatches traces/lattice-3ebc126
+        run: python3 scripts/trace_check.py traces/lattice-53.2.0
 
   lean:
     runs-on: ubuntu-latest
