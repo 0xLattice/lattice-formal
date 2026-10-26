@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Planted bugs for the Lean model.
 
-    scripts/lean_mutants.py [value-trace-dir]
+    scripts/lean_mutants.py [value-trace-dir...]
 
 Each mutant breaks one rule of the model (lean/LatticeProofs/Model.lean) and
 must be killed by what it names:
@@ -54,7 +54,17 @@ MUTANTS = [
     ("negative-balance-clamped", {"proofs", "traces"},
      "if v < 0 then none",
      "if v < 0 then some (acc.erase o)"),
+    ("coinbase-unbounded", {"proofs", "traces"},
+     "  guard (coinbaseFits b)\n", ""),
+    ("balance-beyond-uint64", {"proofs", "traces"},
+     "  guard (balances.all (·.2 ≤ uint64Max))\n", ""),
     # Rules no theorem states: only the implementation traces pin them down.
+    ("burned-coinbase-bounded", {"traces"},
+     "  | none => true\n",
+     "  | none => decide ((b.reward : Int) + fee b.actions ≤ int64Max)\n"),
+    ("delta-int64-min-accepted", {"traces"},
+     "d != 0 && decide (-int64Max ≤ d) && decide (d ≤ int64Max) && accountActionsValid as",
+     "d != 0 && decide (d ≤ int64Max) && accountActionsValid as"),
     ("receipt-zero-demand-accepted", {"traces"},
      "if m.get? k = none ∧ amtD ≠ 0 then applyReceipts (m.set k w) as else none",
      "if m.get? k = none then applyReceipts (m.set k w) as else none"),
@@ -92,7 +102,7 @@ def traces_disagree(work, traces):
 
 
 def main():
-    traces = sorted(pathlib.Path(sys.argv[1]).glob("*.json")) if len(sys.argv) > 1 else []
+    traces = sorted(t for d in sys.argv[1:] for t in pathlib.Path(d).glob("*.json"))
     failures = 0
     for name, killers, old, new in MUTANTS:
         with tempfile.TemporaryDirectory() as d:

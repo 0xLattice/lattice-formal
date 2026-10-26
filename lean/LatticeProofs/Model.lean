@@ -12,9 +12,14 @@ from the normative spec (Lattice `docs/spec.md`), not from the implementation:
 * §8.1 phase 3: a withdrawal needs the matching receipt in `parentState`;
 * §8.2 the fee rule and the coinbase credit.
 
+* the width bounds that decide validity: an account delta is an `Int64`
+  other than `Int64.min` (§3.6), the coinbase credit fits a positive
+  `Int64` (§5.2 step 11), and a balance fits a `UInt64` (§6.2).
+
 Not modelled: general key-value actions and nonces (they move no value),
-signatures, policies, state growth, the `Int64` and `UInt64` bounds, and
-Merkle proofs (the maps stand for the proven sub-states).
+signatures, policies, state growth, the encoding bounds of the other action
+fields (a value outside them cannot be written), and Merkle proofs (the maps
+stand for the proven sub-states).
 -/
 
 namespace Lattice
@@ -121,10 +126,15 @@ def totalWithdrawn : List Action → Nat
 def fee (as : List Action) : Int :=
   (totalDebits as : Int) + totalWithdrawn as - totalCredits as - totalDeposited as
 
-/-- §3.6: `delta != 0` (the `Int64.min` exclusion is a width bound). -/
+/-- The largest `Int64` and `UInt64`. -/
+def int64Max : Int := 2 ^ 63 - 1
+def uint64Max : Nat := 2 ^ 64 - 1
+
+/-- §3.6: `delta != 0`, and `delta` an `Int64` other than `Int64.min`. -/
 def accountActionsValid : List Action → Bool
   | [] => true
-  | .account _ d :: as => d != 0 && accountActionsValid as
+  | .account _ d :: as =>
+      d != 0 && decide (-int64Max ≤ d) && decide (d ≤ int64Max) && accountActionsValid as
   | _ :: as => accountActionsValid as
 
 /-! ## Sub-state transitions -/
@@ -188,6 +198,13 @@ def coinbase (b : Block) : List (Address × Int) :=
   | some r => [(r, (b.reward : Int) + fee b.actions)]
   | none => []
 
+/-- §5.2 step 11: with a recipient, the coinbase `M = reward + F` must fit an
+`Int64` delta (zero credits nothing); a burned coinbase has no bound. -/
+def coinbaseFits (b : Block) : Bool :=
+  match b.recipient with
+  | some _ => decide ((b.reward : Int) + fee b.actions ≤ int64Max)
+  | none => true
+
 /-- One block's value-bearing transition, from `prevState`, for a chain at
 directory `dir` whose `parentState` holds `parentReceipts`. -/
 def applyBlock (dir : String) (parentReceipts : Map ReceiptKey Address)
@@ -196,10 +213,15 @@ def applyBlock (dir : String) (parentReceipts : Map ReceiptKey Address)
   guard (accountActionsValid b.actions)
   guard (totalCredits b.actions + totalDeposited b.actions ≤
          totalDebits b.actions + totalWithdrawn b.actions)
+  guard (coinbaseFits b)
   let afterW ← applyWithdrawals dir parentReceipts s.deposits b.actions
   let deposits ← applyDeposits afterW b.actions
   let receipts ← applyReceipts s.receipts b.actions
   let balances ← applyBalances s.balances (accountActions b.actions ++ coinbase b)
+  -- §6.2: a balance beyond `UInt64` is invalid. This also covers §6.2's
+  -- net-delta bound: from balances within `UInt64`, a net credit beyond it
+  -- ends beyond it, and a net debit beyond it goes negative.
+  guard (balances.all (·.2 ≤ uint64Max))
   pure { balances, deposits, receipts }
 
 /-- A chain segment: each block with its `parentState`'s receipts. -/

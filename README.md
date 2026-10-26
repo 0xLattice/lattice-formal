@@ -298,7 +298,10 @@ transition from the spec:
 - receipts, with a nonzero demand, and the debit and credit they derive
   (§6.5);
 - the parent receipt a withdrawal needs (§8.1 phase 3);
-- the fee rule and coinbase (§8.2).
+- the fee rule and coinbase (§8.2);
+- the width bounds: a delta is an `Int64` other than `Int64.min` (§3.6), a
+  coinbase paid to a recipient fits an `Int64` (§5.2 step 11; a
+  burned one has no bound), and a balance fits a `UInt64` (§6.2).
 
 | Theorem | Spec |
 |---|---|
@@ -312,6 +315,7 @@ transition from the spec:
 | `deposit_fresh`, `receipt_fresh`: insertion only at absent keys | §12.4.1-2 |
 | `receipt_provenance`: every receipt was inserted by a receipt action | §6.5 |
 | `applyBlock_wf`: sub-states keep distinct keys and no zero balance | §6.2 |
+| `balances_fit`, `coinbase_fits`: every balance fits a `UInt64`, and a paid coinbase an `Int64` | §6.2, §5.2 |
 
 ```sh
 cd lean && lake build                    # the proofs
@@ -333,7 +337,8 @@ the verdict must agree, and on a valid block every entry of the three post
 sub-states must be equal.
 
 ```sh
-cd lean && lake build tracecheck && .lake/build/bin/tracecheck ../traces/value-2dfbab1/*.json
+cd lean && lake build tracecheck
+.lake/build/bin/tracecheck ../traces/value-2dfbab1/*.json ../traces/value-width-38bef1e/*.json
 ```
 
 `traces/value-2dfbab1/` holds 510 cases (Lattice PR #39 at `2dfbab1`), all
@@ -352,6 +357,16 @@ conforming:
   same block (withdrawals come first, §6.4), and zero demands or amounts on
   receipts and withdrawals.
 
+`traces/value-width-38bef1e/` holds 140 more (Lattice PR #41 at `38bef1e`),
+on a chain whose reward is 2^62 so that balances can reach the bounds, all
+conforming. 40 break one width bound, and the implementation rejects each
+at that bound's check: a
+delta of `Int64.min`, an owner's net credit beyond `UInt64`, a balance beyond
+`UInt64` (by transfer or by the coinbase), and a paid coinbase beyond
+`Int64`. The valid ones sit at the bounds: deltas of ±`Int64.max`, a balance
+of exactly `UInt64.max`, a coinbase of exactly `Int64.max`, and a burned
+coinbase beyond `Int64.max`, which is accepted.
+
 Checking the model against the implementation found two rules the spec did
 not state, and the model lacked one of them: a receipt needs a nonzero
 `amountDemanded`, and a block's account deltas, explicit, receipt-derived and
@@ -360,7 +375,8 @@ both since adalinxx/Lattice#40, and the model has the receipt rule.
 
 ### Planted bugs
 
-`scripts/lean_mutants.py traces/value-2dfbab1` breaks one rule of the model at
+`scripts/lean_mutants.py traces/value-2dfbab1 traces/value-width-38bef1e`
+breaks one rule of the model at
 a time. A rule a theorem depends on must make the proofs stop building, and
 every mutant must make the model disagree with the implementation's traces:
 
@@ -373,17 +389,21 @@ every mutant must make the model disagree with the implementation's traces:
 | over-withdrawal | break | disagree |
 | a deposit overwrites | break | disagree |
 | a negative balance is clamped | break | disagree |
+| a paid coinbase is unbounded | break | disagree |
+| a balance may exceed `UInt64` | break | disagree |
+| a burned coinbase is bounded too | (no theorem states it) | disagree |
+| a delta of `Int64.min` is accepted | (no theorem states it) | disagree |
 | a receipt with zero demand is accepted | (no theorem states it) | disagree |
 | deposits applied before withdrawals | (no theorem states it) | disagree |
 | balances move delta by delta in action order, not netted | (no theorem states it) | disagree |
 
 Not modelled: general key-value actions and nonces (they move no value),
-signatures, policies, state growth, the `Int64` and `UInt64` width bounds, the
-genesis premine, and the Merkle proofs themselves (each map stands for its
+signatures, policies, state growth, the encoding bounds of the other action
+fields (a value outside them cannot be written), the genesis premine, and the Merkle proofs themselves (each map stands for its
 proven sub-state).
 
 ## Roadmap
 
 1. **Header-rule exclusions** (§9.9) in `Hierarchy.tla`, and three-level
    implementation traces.
-2. **Lean:** Merkle proof semantics and the width bounds.
+2. **Lean:** Merkle proof semantics.

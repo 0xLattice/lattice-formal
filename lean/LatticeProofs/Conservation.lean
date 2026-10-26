@@ -21,6 +21,17 @@ theorem applyBlock_wf (hs : s.WF) (h : applyBlock dir pr s b = some s') : s'.WF 
   obtain ⟨b1, b2, -⟩ := applyBalances_spec hs.balancesNodup hs.balancesPos hb
   exact ⟨b1, d1, r1 hs.receiptsNodup, b2⟩
 
+/-- §6.2: every balance a valid block leaves fits a `UInt64`. -/
+theorem balances_fit (h : applyBlock dir pr s b = some s') :
+    ∀ e ∈ s'.balances, e.2 ≤ uint64Max :=
+  (applyBlock_fits h).2
+
+/-- §5.2 step 11: a valid block's coinbase credit fits an `Int64`. -/
+theorem coinbase_fits (h : applyBlock dir pr s b = some s') (hr : b.recipient = some r) :
+    (b.reward : Int) + fee b.actions ≤ int64Max := by
+  have := (applyBlock_fits h).1
+  simpa [coinbaseFits, hr] using this
+
 /-! ## Per-block conservation (§8.2) -/
 
 /-- No value creation: a valid block's fee is never negative. -/
