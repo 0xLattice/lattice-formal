@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run TLC on one model: scripts/tlc.sh <config> [spec-dir]
+# <Module>_<name>.cfg checks <Module>.tla; any other <name>.cfg checks MC.tla.
 # Fetches the pinned tla2tools.jar on first use and verifies its hash.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,6 +17,8 @@ echo "$sha  $jar" | shasum -a 256 -c - >/dev/null
 java="${JAVA:-java}"
 meta="$(mktemp -d)"
 trap 'rm -rf "$meta"' EXIT
+module="MC"
+[[ "$cfg" == *_* ]] && module="${cfg%%_*}"
 cd "$dir"
 "$java" -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto -deadlock \
-  -metadir "$meta" -config "$cfg" MC.tla
+  -metadir "$meta" -config "$cfg" "$module.tla"

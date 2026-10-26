@@ -11,7 +11,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [MCMain.cfg, MCGap.cfg, MCTie.cfg]
+        config:
+          - MCMain.cfg
+          - MCGap.cfg
+          - MCTie.cfg
+          - MCHierarchy_Main.cfg
+          - MCHierarchy_P2Bad.cfg
+          - MCHierarchy_P1Gap.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,4 +38,4 @@ jobs:
           distribution: temurin
           java-version: "17"
       - name: Planted bugs must be caught
-        run: scripts/mutants.sh
+        run: python3 scripts/mutants.py

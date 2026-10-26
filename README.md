@@ -14,8 +14,9 @@ Requires Java 11+. The pinned `tla2tools.jar` (v1.7.4, SHA-256 checked) is
 fetched on first use.
 
 ```sh
-scripts/check.sh            # every model, then every planted bug
-scripts/tlc.sh MCMain.cfg   # one model
+scripts/check.sh                       # every model, then every planted bug
+scripts/tlc.sh MCMain.cfg              # one model (MC.tla)
+scripts/tlc.sh MCHierarchy_Main.cfg    # <Module>_<name>.cfg checks <Module>.tla
 ```
 
 Set `JAVA=/path/to/java` if `java` is not on `PATH`.
@@ -50,8 +51,8 @@ a quantity ratchet, and a valid block under an excluded one.
 
 ### Planted bugs
 
-A property that cannot fail proves nothing. `scripts/mutants.sh` breaks one rule
-at a time and requires the named property to go red:
+A property that cannot fail proves nothing. `scripts/mutants.py` breaks one rule
+at a time and requires the named property, checked alone, to go red:
 
 | Mutant | Must be caught by |
 |---|---|
@@ -107,11 +108,73 @@ the guarantee rests on.
   fact recovery could not replay, sits in the unmodelled persistence layer.
 - **Small scope:** five blocks, two nodes, one chain.
 
+## Hierarchy (`specs/Hierarchy.tla`)
+
+One node hosting a parent chain and one child chain: parent-attributed run work
+(§9.10), parent-state continuity (§5.3 step 6, §9.5), and fork choice with
+weighed and validated tiers on each chain. The node receives every fact in
+every order TLC can find. Reaching only one answer is the order-independence
+check, so one node is enough here.
+
+| Property | Kind | Spec |
+|---|---|---|
+| `PhysicalWorkOnce`: a child block's weight equals the sum over the distinct physical grinds it rests on; its components (child grinds, attributed runs) never share a grind | invariant | §9.1, §9.10 |
+| `AnchoredAtExecuted`: a validated child block is anchored at a state the parent's executed frontier produced | invariant | §5.3 step 6, §9.5 |
+| `AnchorsAdvance`: along validated child history, anchors never move back to empty or sideways | invariant | §5.3 step 6, §12.5.8 |
+| `WorkMonotone`: no step lowers any block's weight on either chain, attributed runs included | action | §9.10 "only ever raised" |
+| `TipsWellFormed`, `VerdictsPermanent` | invariant, action | §9.9 |
+| `ExpectedAnswer`: quiescent tips equal hand-computed answers, and child weights equal ONE table shared by every model | oracle | §9.10, §12.5.7 |
+
+The three models differ only in the parent's verdicts and body availability,
+and must all produce the same child weights. That is §12.5.7, that parent
+canonicity alone cannot change child weight, and §9.10's "independent of
+exclusion and of parent canonicity".
+
+| Config | Scenario |
+|---|---|
+| `MCHierarchy_Main.cfg` | the parent's canonical tip (`p2`) is on a different branch from the child's anchor (`p1`); the child still validates there |
+| `MCHierarchy_P2Bad.cfg` | `p2` is invalid, so the parent's canonical tip moves to `p4`; nothing in the child moves |
+| `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling |
+
+In every model the child's fork is decided by the attributed run alone: `c1`
+and `c2` tie on their own work, `c2` has the smaller CID, and `c1`'s parent
+run is what makes it win.
+
+### Planted bugs
+
+| Mutant | Model | Must be caught by |
+|---|---|---|
+| attributed run also counts the carrier's own grind | Main | `PhysicalWorkOnce` |
+| no run attribution | Main | `ExpectedAnswer` |
+| runs skip excluded parent blocks (follow canonicity) | P2Bad | `ExpectedAnswer` |
+| continuity requires the anchor on the parent's canonical chain | Main | `ExpectedAnswer` |
+| continuity accepts a weighed but unexecuted anchor | P1Gap | `AnchoredAtExecuted` |
+| continuity allows a sideways anchor | Main | `AnchorsAdvance` |
+
+### Interpretation choices
+
+Two places where the spec admits more than one reading. The model takes one
+reading at each:
+
+- **When a sideways anchor becomes a verdict.** The model records the child's
+  exclusion as soon as the node holds both anchors' parent headers and the
+  older is not an ancestor of the newer. Ancestry of held headers is
+  immutable, so this is a completed deterministic check (§9.9). The other
+  reading waits until the new anchor is also executed.
+- **An anchor at an excluded parent block** is never proven, so the child
+  block stays held (weighed, unvalidated) forever rather than being excluded.
+  §9.5 calls continuity across unexecuted blocks "not proven here", never a
+  verdict.
+
+Also not modelled: the equality and back-to-empty continuity cases (no block
+in these models repeats its predecessor's anchor or drops to empty),
+multi-level recursion (Nexus → A → B, §9.10), and more than one child
+directory.
+
 ## Roadmap
 
-1. **Hierarchy:** parent-attributed run work (§9.10), parent-state continuity
-   (§5.3, §9.5), and invariant §12.5.7, that parent canonicity alone cannot
-   change child validity, weight or fork choice.
+1. **Hierarchy depth:** a grandchild level, so attributed runs recurse
+   (§9.10), plus the equality and back-to-empty continuity cases.
 2. **Trace validation:** record fact streams from lattice-node's deterministic
    tests and simulator, then check each trace is a behaviour of these specs.
    This is the link from model to Swift code.
