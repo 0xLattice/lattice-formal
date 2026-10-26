@@ -53,6 +53,10 @@ jobs:
         run: python3 scripts/trace_check.py --selftest traces/lattice-53.2.0/trace-2.json
       - name: Implementation traces conform to the spec
         run: python3 scripts/trace_check.py traces/lattice-53.2.0
+      - name: The hierarchy trace checker catches corrupted traces
+        run: python3 scripts/hierarchy_trace_check.py --selftest traces/hierarchy-434a3be/trace-2.json
+      - name: Two-level implementation traces conform to the spec
+        run: python3 scripts/hierarchy_trace_check.py traces/hierarchy-434a3be
 
   lean:
     runs-on: ubuntu-latest

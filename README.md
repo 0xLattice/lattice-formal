@@ -238,6 +238,48 @@ mempool spec and boot walk following the same rule (adalinxx/lattice-node#15).
 The regenerated traces differ from the old ones only in the act-on tip of those
 7 traces.
 
+## Hierarchy trace validation (`specs/TraceHierarchy.tla`)
+
+Lattice's `HierarchyTraceExportTests` drives a real parent `ChainTree` and a
+real child `ChainTree` from seeded random facts: commits, anchors, merged
+grinds, verdicts, and withheld bodies. After every apply on either tree it
+re-derives the attributed runs exactly as the node does. A child block's
+continuity is decided by the implementation's own check, `validateParentFacts`
+over the live parent tree, which is the call the connect path makes.
+`scripts/hierarchy_trace_check.py` replays each trace through `Hierarchy.tla`:
+
+- each event must be a spec step with the same accept/refuse, and each
+  refusal reason must be the spec's: a child validation held for
+  continuity, an observation refused because the grind is located
+  elsewhere, an invalid root kept because no other root executed. A child
+  exclusion's cause (transition or continuity) must be the spec's too;
+- after each event, on both chains, the canonical tip, the act-on tip and
+  every held block's weight (attributed runs included) must equal the
+  spec's, and so must every held child block's continuity.
+
+```sh
+scripts/hierarchy_trace_check.py traces/hierarchy-434a3be
+scripts/hierarchy_trace_check.py --selftest traces/hierarchy-434a3be/trace-2.json
+```
+
+`traces/hierarchy-434a3be/` holds 20 traces (Lattice PR #37 at `434a3be`):
+
+| Recorded | Count |
+|---|---|
+| events | 1,600 |
+| child validations proven | 25 |
+| child validations held for continuity | 101 |
+| child validations with continuity invalid | 7 |
+| attributed runs credited (final states) | 17, in 12 traces |
+| merged grinds | 29 |
+
+All conform. The self-test corrupts a child weight, a continuity answer, a
+child act-on tip, a held validation reported as accepted, a child
+exclusion's cause, and an unreported grind-elsewhere refusal, and requires
+each to be caught. The traces also fail against planted bugs in the model:
+with no run attribution 12 of 20 fail, and with sideways anchors allowed 12
+of 20 fail.
+
 ## Value conservation (`lean/`)
 
 Lean 4 proofs, core library only, toolchain pinned in `lean/lean-toolchain`.
@@ -289,8 +331,6 @@ proven sub-state).
 
 1. **Hierarchy depth:** a grandchild level, so attributed runs recurse
    (§9.10), and header-rule exclusions.
-2. **Hierarchy traces:** export parent and child traces (run attribution,
-   continuity) and check them against `Hierarchy.tla`.
-3. **Lean refinement:** connect `Model.lean` to the implementation with the
+2. **Lean refinement:** connect `Model.lean` to the implementation with the
    same trace approach, or extend it with Merkle proof semantics and width
    bounds.
