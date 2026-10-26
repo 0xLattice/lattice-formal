@@ -198,36 +198,37 @@ decided. `scripts/trace_check.py` replays each trace through `ForkChoice.tla`:
   block's subtree weight and its prefix work must equal the spec's.
 
 ```sh
-scripts/trace_check.py traces/lattice-3ebc126            # all checks
-scripts/trace_check.py --selftest traces/lattice-3ebc126/trace-2.json
+scripts/trace_check.py traces/lattice-53.2.0            # all checks
+scripts/trace_check.py --selftest traces/lattice-53.2.0/trace-2.json
 ```
 
-The self-test corrupts a passing trace three ways (a weight, a prefix work, an
-accept flag) and requires each to be caught.
+The self-test corrupts a passing trace four ways (a weight, a prefix work, an
+act-on tip, an accept flag) and requires each to be caught.
 
-`traces/lattice-3ebc126/` holds 20 traces (800 events) from Lattice PR #31 at
-`3ebc126`. Every event matches the spec on accept/refuse, canonical tip,
-subtree weight and prefix work.
+`traces/lattice-53.2.0/` holds 20 traces (800 events) exported from Lattice
+53.2.0. Every event matches the spec on accept/refuse, canonical tip, act-on
+tip, subtree weight and prefix work.
 
-### Divergence found: the act-on tip at the genesis fork
+### Divergence found and fixed: the act-on tip at the genesis fork
 
-The implementation's validated tip differs from the spec in 7 of 20 traces,
+Traces from Lattice before 53.2.0 differed from the spec in 7 of 20 traces,
 always in the same shape: two genesis roots, where the executed root is not
-the canonical (heaviest) one. The implementation returns no act-on tip; the
+the canonical (heaviest) one. The implementation returned no act-on tip; the
 spec acts on the executed root.
 
 - Spec: §9.9, "descending from genesis, at each fork it follows the heaviest
   child that is validated", and §9.4, a chain "may hold several genesis roots;
   the same rule applies to them".
-- Implementation: `ChainTree.heaviestExecutedTip` starts its descent at
-  `executedPrefix()`, which follows the canonical root only, so the choice
-  among roots is not restricted to executed ones.
+- Implementation: `ChainTree.heaviestExecutedTip` started its descent at
+  `executedPrefix()`, which follows the canonical root only.
 - Consequence: on a child chain, which may hold several genesis roots, a
-  heavier competing genesis whose body is withheld leaves every node with no
-  act-on tip. That is the withheld-header stall the restricted descent closes
-  at every other fork.
+  heavier competing genesis whose body is withheld left every node with no
+  act-on tip.
 
-Until it is resolved, CI checks the traces with `--skip ValidatedTipMatches`.
+Fixed in Lattice 53.2.0 (adalinxx/Lattice#35), with the node's body scheduler,
+mempool spec and boot walk following the same rule (adalinxx/lattice-node#15).
+The regenerated traces differ from the old ones only in the act-on tip of those
+7 traces.
 
 ## Value conservation (`lean/`)
 
