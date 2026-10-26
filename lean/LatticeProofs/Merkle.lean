@@ -294,6 +294,44 @@ def Root.applyAll : List (List K × Op V) → Root K V D → Option (Root K V D)
   | [], s => some s
   | (k, o) :: ws, s => do Root.applyAll ws (← s.apply o k)
 
+/-! ## The partial trie a write needs -/
+
+/-- A node with its children left as stubs. -/
+def Kids.stubs (H : Enc K V D → D) : Kids K V D → Kids K V D
+  | .nil => .nil
+  | .cons c t rest => .cons c (.stub (t.digest H)) (rest.stubs H)
+
+def Trie.shallow (H : Enc K V D → D) : Trie K V D → Trie K V D
+  | .stub d => .stub d
+  | .node p v ks => .node p v (ks.stubs H)
+
+def Kids.shallows (H : Enc K V D → D) : Kids K V D → Kids K V D
+  | .nil => .nil
+  | .cons c t rest => .cons c (t.shallow H) (rest.shallows H)
+
+mutual
+/-- The partial trie that resolves the path of key `k` and, at each node on
+it, the children's own nodes (what a deletion's collapse reads; cashew
+`resolveGrandchildren`); everything else is a stub. -/
+def Trie.witness (H : Enc K V D → D) (k : List K) : Trie K V D → Trie K V D
+  | .stub d => .stub d
+  | .node p v ks =>
+    .node p v (match dropPrefix p k with
+      | some (c :: r) => ks.witness H c r
+      | _ => ks.shallows H)
+
+def Kids.witness (H : Enc K V D → D) (c : K) (r : List K) : Kids K V D → Kids K V D
+  | .nil => .nil
+  | .cons c' t rest =>
+    if c' = c then .cons c' (t.witness H (c :: r)) (rest.shallows H)
+    else .cons c' (t.shallow H) (rest.witness H c r)
+end
+
+def Root.witness (H : Enc K V D → D) (k : List K) (s : Root K V D) : Root K V D :=
+  ⟨s.count, match k with
+    | [] => s.kids.shallows H
+    | c :: r => s.kids.witness H c r⟩
+
 /-! ## Canonical form -/
 
 /-- The character order children are sorted by: a strict total order (the
