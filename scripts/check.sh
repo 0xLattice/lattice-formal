@@ -15,7 +15,7 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
 done
 # Witnesses: each must FAIL, showing the scenario a property quantifies over
 # is reachable, so the property is not vacuous.
-for pair in "MCHierarchyFork_W.cfg NoBackedFork"; do
+for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBackedGrandchildFork"; do
   set -- $pair
   out="$("$root/scripts/tlc.sh" "$1" 2>&1)"
   if grep -q "Invariant $2 is violated" <<<"$out"; then

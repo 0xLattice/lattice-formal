@@ -140,20 +140,22 @@ answer in every reachable state.
 | Property | What is replaced or checked | Spec |
 |---|---|---|
 | `ChildrenCannotMoveParent`: a chain's weights, verdicts and tips are what they would be with every chain below it erased. Attribution flows down only, so no child chain, however much work or spam it carries, moves its parent's fork choice | every lower-chain block, location, quantity and verdict | §9.10 |
-| `ParentCanonicityIrrelevant`: every chain below sees the same weights, verdicts and tips whichever branch of the parent is canonical | the parent's exclusions (all non-roots) and its CID order (reversed); what has executed is kept | §12.5.7 |
+| `ParentCanonicityIrrelevant`: every chain below sees the same weights, verdicts and tips whichever branch of the parent is canonical, or validated and acted on | the parent's exclusions (all non-roots) and its CID order (reversed); what has executed is kept | §12.5.7 |
 | `WeightIgnoresVerdicts`: no verdict on any chain, carriers' included, moves any block's weight ("work weighs, validity selects") | every verdict on every chain | §12.5.2, §9.9 |
-| `NoDoubleBacking`: merged mining has nothing at stake. The parent work behind one side of a child fork, through attributed runs, never also backs the other side, genesis forks included | (direct) | §9.10 |
-| `HeaviestAtEveryFork`: at every fork on the canonical path, at any depth and genesis forks included, the chosen block is the heaviest selectable sibling by whole-subtree work, ties to the smaller CID. Stated per fork rather than by descent, so a frozen prefix or a heaviest-chain rule fails it | (direct) | §9.4, §12.5.10 |
+| `NoDoubleBacking`: merged mining has nothing at stake. The work above that reaches one side of a lower fork through attributed runs, followed level by level to the root, never also backs the other side, genesis forks included | (direct) | §9.10 |
+| `HeaviestAtEveryFork`: at every fork on the canonical path, at any depth and genesis forks included, the chosen block is the heaviest selectable sibling by whole-subtree work, ties to the smaller CID; the validated path likewise among validated siblings. Stated per fork rather than by descent, so a frozen prefix or a heaviest-chain rule fails it | (direct) | §9.4, §9.9, §12.5.10 |
 | `ExcludedHasCause`: a block is excluded only for a header rule, a failed transition or a forbidden empty anchor. A missing body, a held anchor or an excluded ancestor never excludes | (direct, independent of `Verdict`) | §9.9 |
 | `NothingPruned`: admitted blocks, located grinds and verified quantities only grow | action | §12.5.9 |
 
-Two checks keep these from passing vacuously. `ParentCanonMoves` requires
-the replacement to really move the parent's canonical tip. `MCHierarchyFork_W.cfg`
-must *fail* `NoBackedFork`, showing that a child fork with parent work
-behind both sides is reachable. It is reached only in `MCHierarchyFork`,
-which was added for that purpose: the parent forks, each side carries its
-own child block, and the child picks the side with more committed work
-(`ca`) although the parent's canonical tip is on the other side.
+Checks keep these from passing vacuously. `ParentCanonMoves` and
+`ParentValidatedMoves` require the replacement to really move the parent's
+canonical and validated tips. `MCHierarchyFork_W.cfg` and
+`MCHierarchyFork_WG.cfg` must *fail* `NoBackedFork` and
+`NoBackedGrandchildFork`, showing that a child fork, and a grandchild fork
+with parent-chain work behind it, each with work from above on both sides,
+are reachable. They are reached only in `MCHierarchyFork`, which was added
+for that purpose: the parent's branches tie, so its tips are decided by CID
+alone, and each level below picks the side the level above did not.
 
 The five two-level models differ only in verdicts, header-rule violations and body availability,
 and must all produce the same child weights. That is §12.5.7, that parent
@@ -167,7 +169,7 @@ exclusion and of parent canonicity".
 | `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling branch |
 | `MCHierarchy_HeldInvalid.cfg` | `c3`'s anchor is sideways (continuity held) and its transition is invalid: `c3` is excluded, not held, so the child's canonical tip moves to `c1` |
 | `MCHierarchy_HeaderBad.cfg` | `p3` (the carrier of `c1`) and `c3` break a header validity rule (§9.9: `spec` or `prevState` mismatch), so each is excluded the moment it is weighed. `p3` and its descendant still weigh and its run still credits `c1`; `c3` is excluded rather than held, so the child's canonical tip moves to `c1` |
-| `MCHierarchyFork_Main.cfg` | a merged-mining fork: `pa` and `pb` fork the parent and each carries its own child block, `ca` and `cb`. Each side's run backs only its own child block. The parent's canonical tip is on `pb`'s side, yet the child chooses `ca` (3 + 1 = 4 against 1 + 2 = 3) |
+| `MCHierarchyFork_Main.cfg` | merged-mining forks at three levels. The parent's branches `pa` and `pb` tie, so its tips (`pa2`) are decided by CID alone; each carries its own child block. The child chooses `cb`, the other side (3 against 2), and its block `ca2` anchors deep on `pa`'s branch. The grandchild has a genesis fork backed through the child's runs and chooses `ga`, again the other side. No work above backs both sides of either fork |
 | `MCHierarchy3_Main.cfg` | three levels: the run P attributes at a C carrier is credited work in that carrier's own run, so it reaches G (§9.10 "level by level"); P attributes both at the carrier and at a non-carrier member of its run; one grind is merged across all three levels, with a different quantity at each, and counted once at each |
 
 The shared scenario also covers:
@@ -204,8 +206,9 @@ by `ForkChoice.tla`.
 | a grandchild's attributed run also counts the child carrier's own grind | Hierarchy3 | `PhysicalWorkOnce` |
 | attributed runs count only once their carrier has executed | Main | `WeightIgnoresVerdicts` |
 | the child credits only carriers on selectable parent branches | Fork | `ParentCanonicityIrrelevant` |
-| child continuity requires the anchor on the parent's canonical chain | Main | `ParentCanonicityIrrelevant` |
+| child continuity requires the anchor on the parent's validated chain | Fork | `ParentCanonicityIrrelevant` |
 | a run backs every child block anchored in it, not just the one its carrier commits | Fork | `NoDoubleBacking` |
+| the grandchild credits every carrier that commits any grandchild block, not the block's own | Fork | `NoDoubleBacking` |
 | a carrier is credited the child work it commits (upward attribution) | Fork | `ChildrenCannotMoveParent` |
 | a held anchor excludes the block | Main | `ExcludedHasCause` |
 | fork choice compares a block's own work, not its subtree's (heaviest chain, not GHOST) | Main | `HeaviestAtEveryFork` |

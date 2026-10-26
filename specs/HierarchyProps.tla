@@ -55,10 +55,15 @@ ParentCanonicityIrrelevant ==
         /\ ValidatedTip(ch) = OtherCanon(u)!ValidatedTip(ch)
 
 \* Not vacuous: at quiescence the perturbation really moves the parent's
-\* canonical tip (only in models where that tip is not a root).
+\* canonical tip (only in models where that tip is not a root), and, where
+\* the parent's branches tie (MCHierarchyFork), the validated tip it acts on.
 ParentCanonMoves ==
     Quiescent =>
         OtherCanon("P")!CanonicalTip("P") # CanonicalTip("P")
+
+ParentValidatedMoves ==
+    Quiescent =>
+        OtherCanon("P")!ValidatedTip("P") # ValidatedTip("P")
 
 \* §9.10: attribution flows down only.  A chain's weights, verdicts and
 \* tips are what they would be with every chain below it erased: no child
@@ -72,12 +77,19 @@ ChildrenCannotMoveParent ==
         /\ CanonicalTip(ch) = NoBelow(u)!CanonicalTip(ch)
         /\ ValidatedTip(ch) = NoBelow(u)!ValidatedTip(ch)
 
-\* Merged mining has nothing at stake: the parent work behind one side of
-\* a child fork never also backs the other side.  Backing(ch, b) is every
-\* parent-chain block whose work reaches b's weight through an attributed
-\* run; sibling subtrees, genesis forks included, share none.
-Backing(ch, b) ==
-    UNION {Run(Up(ch), u) : u \in UNION {CarriersOf(ch, q) : q \in Subtree(ch, b)}}
+\* Merged mining has nothing at stake: the work above behind one side of a
+\* lower fork never also backs the other side.  Feeds(ch, q) is every block
+\* above whose work reaches q's credited work through attributed runs,
+\* followed level by level to the root (a run's members are credited with
+\* the runs attributed to them in turn, §9.10).  Backing(ch, b) gathers it
+\* over b's subtree; sibling subtrees, genesis forks included, share none.
+RECURSIVE Feeds(_, _)
+Feeds(ch, q) ==
+    LET members == UNION {Run(Up(ch), u) : u \in CarriersOf(ch, q)}
+    IN  members \cup IF Up(ch) = "P" THEN {}
+                     ELSE UNION {Feeds(Up(ch), m) : m \in members}
+
+Backing(ch, b) == UNION {Feeds(ch, q) : q \in Subtree(ch, b)}
 
 NoDoubleBacking ==
     \A ch \in LowerChains : \A x, y \in weighed[ch] :
@@ -85,9 +97,13 @@ NoDoubleBacking ==
 
 \* Not vacuous: some reachable state has a child fork whose two sides are
 \* both backed by parent work.  Checked as a property that must FAIL.
-NoBackedFork ==
-    ~\E ch \in LowerChains : \E x, y \in weighed[ch] :
+BackedFork(ch) ==
+    \E x, y \in weighed[ch] :
         x # y /\ Parent[x] = Parent[y] /\ Backing(ch, x) # {} /\ Backing(ch, y) # {}
+
+NoBackedFork == ~BackedFork("C")
+NoBackedGrandchildFork ==
+    ~(BackedFork("G") /\ \E x \in weighed["G"] : Backing("G", x) \cap PBlocks # {})
 
 \* §9.9, "unavailable is not invalid": a block is excluded only for a
 \* cause its own bytes prove: a header rule, a failed transition, or an
@@ -108,18 +124,22 @@ ExcludedHasCause ==
 \* any depth and genesis forks included, the chosen block is the heaviest
 \* selectable sibling by whole-subtree work, ties to the smaller CID; and
 \* the tip has no selectable child.  Stated per fork, not by descent.
+\* §9.9: the validated tip follows the same rule over validated blocks,
+\* weighed by the whole subtree, unvalidated descendants included.
+HeaviestPath(ch, t, S) ==
+    /\ t = None => Roots(ch) \cap S = {}
+    /\ t # None =>
+         /\ \A y \in S : Parent[y] # t
+         /\ \A x \in AncOrSelf(t) : \A y \in S :
+                (y # x /\ Parent[y] = Parent[x]) =>
+                    \/ TrueCumWork(ch, y) < TrueCumWork(ch, x)
+                    \/ /\ TrueCumWork(ch, y) = TrueCumWork(ch, x)
+                       /\ CidRank[x] < CidRank[y]
+
 HeaviestAtEveryFork ==
     \A ch \in Chains :
-        LET t == CanonicalTip(ch)
-            S == Selectable(ch)
-        IN  /\ t = None => Roots(ch) \cap S = {}
-            /\ t # None =>
-                 /\ \A y \in S : Parent[y] # t
-                 /\ \A x \in AncOrSelf(t) : \A y \in S :
-                        (y # x /\ Parent[y] = Parent[x]) =>
-                            \/ TrueCumWork(ch, y) < TrueCumWork(ch, x)
-                            \/ /\ TrueCumWork(ch, y) = TrueCumWork(ch, x)
-                               /\ CidRank[x] < CidRank[y]
+        /\ HeaviestPath(ch, CanonicalTip(ch), Selectable(ch))
+        /\ HeaviestPath(ch, ValidatedTip(ch), validated[ch])
 
 \* §12.5.9: Lattice never prunes accepted graph or verified work facts.
 NothingPruned ==
