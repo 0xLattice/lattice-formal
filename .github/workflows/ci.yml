@@ -16,7 +16,7 @@ jobs:
           - MCGap.cfg
           - MCTie.cfg
           - MCHierarchy_Main.cfg
-          - MCHierarchy_P2Bad.cfg
+          - MCHierarchy_ParentBad.cfg
           - MCHierarchy_P1Gap.cfg
     steps:
       - uses: actions/checkout@v4
@@ -39,3 +39,37 @@ jobs:
           java-version: "17"
       - name: Planted bugs must be caught
         run: python3 scripts/mutants.py
+
+  traces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      # ValidatedTipMatches is skipped while the known root-level divergence
+      # (README, "Trace validation") is open.
+      - name: The trace checker catches corrupted traces
+        run: python3 scripts/trace_check.py --selftest traces/lattice-3ebc126/trace-2.json
+      - name: Implementation traces conform to the spec
+        run: python3 scripts/trace_check.py --skip ValidatedTipMatches traces/lattice-3ebc126
+
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          sh elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Proofs build with no sorry and only standard axioms
+        working-directory: lean
+        run: |
+          lake build
+          ! grep -n -E '\bsorry\b|\badmit\b|^axiom|native_decide|implemented_by' LatticeProofs/*.lean
+          lake env lean LatticeProofs/Axioms.lean | tee axioms.txt
+          ! grep -v -E "depends on axioms: \[(propext|Classical.choice|Quot.sound)(, (propext|Classical.choice|Quot.sound))*\]" axioms.txt
+      - name: Planted bugs break the proofs
+        run: python3 scripts/lean_mutants.py

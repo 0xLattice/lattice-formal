@@ -20,5 +20,11 @@ trap 'rm -rf "$meta"' EXIT
 module="MC"
 [[ "$cfg" == *_* ]] && module="${cfg%%_*}"
 cd "$dir"
-"$java" -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto -deadlock \
+# Models end in quiescent states, so deadlock checking is off by default.
+# Trace checks set TLC_CHECK_DEADLOCK=1: there a deadlock is an event the
+# spec does not allow.
+deadlock="-deadlock"
+[[ "${TLC_CHECK_DEADLOCK:-}" == 1 ]] && deadlock=""
+# $deadlock is deliberately unquoted: empty means no flag.
+"$java" -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto $deadlock \
   -metadir "$meta" -config "$cfg" "$module.tla"

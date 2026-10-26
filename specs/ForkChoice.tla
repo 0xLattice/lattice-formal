@@ -65,6 +65,11 @@ Subtree(n, b) == {x \in weighed[n] : b \in AncOrSelf(x)}
 TrueCumWork(n, b) ==
     SumQty(n, {g \in Grinds : loc[n][g] \in Subtree(n, b)})
 
+\* §9.2: cumulativeWork(B) = total(prefix(B)), the block and its ancestors.
+\* Not a fork-choice input; checked against the implementation's traces.
+CumulativeWork(n, b) ==
+    SumQty(n, {g \in Grinds : loc[n][g] \in AncOrSelf(b) \cap weighed[n]})
+
 \* §9.4: greatest trueCumWork wins; exact tie -> smaller CID.
 Better(n, x, y) ==
     \/ TrueCumWork(n, x) > TrueCumWork(n, y)
