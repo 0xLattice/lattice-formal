@@ -1,3 +1,4 @@
 .tools/
 states/
 *.bak
+lean/.lake/

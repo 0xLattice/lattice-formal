@@ -1,0 +1,5 @@
+name = "LatticeProofs"
+defaultTargets = ["LatticeProofs"]
+
+[[lean_lib]]
+name = "LatticeProofs"
