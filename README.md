@@ -978,6 +978,131 @@ revision is the API's change counter.
   (blocks staged before their parent) are not generated.
 - **Small scope:** three blocks, nine candidate batches, five durable
   batches, two crashes.
+## ASERT difficulty (`lean/LatticeProofs/Asert.lean`)
+
+§5.5 schedules each block's `nextTarget` from one anchor (the height-1
+ancestor on the block's own branch) and the block itself:
+`anchor.target · 2^(drift / halfLife)`, evaluated in 16.16 fixed point with
+a cubic for the fraction. `Asert.lean` transcribes Lattice's
+`ChainSpec.calculateAsertTarget` operation by operation at the
+implementation's widths: `UInt64` heights and spec fields, `Int64`
+timestamps and fixed point, `UInt256` targets. Every Swift operation that
+can trap (an overflowing `+`, `-`, `*`, a narrowing conversion, a division by
+zero) is checked and gives `none`; the `ReportingOverflow` and `clamping:`
+operations are spelled out; `Int64` division truncates and `>> 16` floors.
+The anchor resolution (`immediateDifficultyAnchor`,
+`resolveDifficultyAnchor`) is `anchorOf` over a branch of headers.
+
+`calculateAsertTarget_eq` proves the transcription never traps on in-range
+inputs and equals a closed form, `asertOf`. In it, `drift = elapsed - scheduled`
+with both terms clamped into `Int64`, the exponent is
+`e = tdiv(clamp(drift) · 2^16, halfLife)` with `|drift|` clamped to
+`2^47 - 1` ms, and `targetOf A e` takes `e / 2^16` whole doublings and the
+factor of `e % 2^16`. The theorems below are about the closed form, so they
+hold for the implementation's function.
+
+| Theorem | Spec |
+|---|---|
+| `calculateAsertTarget_eq`, `never_traps`: no trap for any inputs inside their Swift types (which is all the validator can pass), and the result is the closed form | §5.5 "integer-exact" |
+| `on_schedule`: drift 0 returns exactly the anchor's target, at any depth (`A ≥ 1`, schedule inside `Int64`) | §5.5 "exactly on schedule holds the anchor's target" |
+| `mono_timestamp`: a later timestamp never gives a harder target, so a backwards one never eases; `targetOf_mono`: the target is monotone in the exponent | §5.5 "behind eases; ahead hardens", "moving a timestamp backwards ... harder" |
+| `mono_height`: more blocks since the anchor never ease, for heights above the anchor; `mono_height_needs_schedule`: at the anchor's height there is no schedule, so the first block above it can be easier | §5.5 |
+| `result_le_max`; `result_pos`: the result is at least 1 iff the anchor target is nonzero or a schedule runs; `result_zero_unscheduled`: a zero anchor at its own height returns 0 | §5.5 "saturates at both ends" |
+| `half_life_doubling`: `k` half-lives of drift (inside the clamp) give exactly `min(A · 2^k, max)` when easing and `max(1, ⌊A / 2^k⌋)` for up to 224 halvings; `targetOf_harden_deep`: past 224 halvings never easier than that; `targetOf_harden_deep_strict`: and strictly harder at 225 and 240; `clamp_breaks_doubling`: not exact past the clamp | §5.5 "one half-life of drift is exactly one doubling" |
+| `factor_upper`, `factor_lower`: the cubic's factor is within 0.021% of `2^(f/65536)` for every fraction, stated as integer inequalities raised to the 65536th power | §5.5 cubic approximation |
+| `forward_shift`: at or behind schedule, a timestamp `k` half-lives later eases the target by at most `2^k` | §5.5 "eases only the one successor by `2^(Δ / halfLife)`" |
+| `next_ignores_intervening`, `shift_does_not_compound`: a block's `nextTarget` depends on its anchor and itself only; changing an earlier block's timestamp changes no later block's | §5.5 "no intervening history", "does not compound", "per-branch and inherited" |
+| `next_ignores_own_target`, `next_at_anchor`: above height 1 a block's own target does not move its `nextTarget`; block 1's `nextTarget` is its own target | §5.5 |
+
+Concrete instances meeting each theorem's hypotheses are evaluated by
+`decide` at the end of `AsertProofs.lean`, and so are the counterexample
+theorems. `factor_upper` and `factor_lower` rest on an 8,192-cell grid checked by
+`decide +kernel` (about a minute): the factor is monotone and so is `2^x`,
+so each cell's ends bound its interior. Measured in floating point, the
+cubic's error is between −0.0091% and +0.0117%; the proven bound is wider
+by the grid's step.
+
+### Vectors
+
+Lattice's `AsertVectorExportTests` records calls to the real
+`calculateAsertTarget`: named edge cases (drift of zero and of whole
+half-lives up to and past both saturations, one millisecond either side,
+half a half-life, every anchor from zero to the maximum, heights equal or
+reversed, a zero or overflowing half-life, timestamps at the `Int64`
+bounds, heights at the `UInt64` bounds, the drift clamp) and a seeded
+sweep. `lake exe asertcheck` runs each through the transcription and
+requires no trap and the same target.
+
+```sh
+cd lean && lake build asertcheck
+.lake/build/bin/asertcheck ../traces/asert-a2cfbd4/*.json
+```
+
+`traces/asert-a2cfbd4/` holds 2,703 vectors (Lattice PR #47 at `a2cfbd4`), all
+conforming: 1,058 hardened, 849 eased, 796 held, 643 at the floor of 1, 454
+at the maximum, 147 with a zero anchor, 105 with no schedule.
+
+### Spec and implementation differ
+
+Found while proving; Lattice is not changed here.
+
+- **"One half-life of drift is exactly one doubling"** holds only inside two
+  bounds. Past 224 halvings `multiplyDividingSaturating` saturates
+  `remainder * numerator`, and from 240 halvings the function returns 1
+  outright, so the target is harder than `⌊A / 2^k⌋`, by up to a factor of
+  about 2 at 225–239 halvings, and 1 against up to 65,535 from 240 on
+  (`targetOf_harden_deep_strict`). The code comments' "never saturates early"
+  and "the true value has already rounded to nothing" are both off there.
+  The drift is also clamped to `2^47 - 1` ms (about 4,462 years) before
+  scaling; a half-life longer than `2^47 / 256` ms (about 17 years) lets the
+  clamp change unsaturated results, and with `halfLife · targetBlockTime =
+  2^62` one half-life of drift moves the target by `1 + 2^-16`
+  (`clamp_breaks_doubling`). The code comment says the clamp "changes no
+  reachable result". Neither regime is reachable at ordinary parameters:
+  224 halvings below any anchor needs 2^224 times its work per block.
+- **"Never reaches zero"** needs a nonzero anchor target or a schedule:
+  with the block at the anchor's height, or `halfLife · targetBlockTime = 0`,
+  the anchor's target is returned unchanged, zero included
+  (`result_zero_unscheduled`). Validation cannot reach that case, since a
+  proof-of-work target is nonzero, but `halfLife = 0` is an unmentioned
+  fixed-difficulty mode.
+- **Monotone in heights** only above the anchor (`mono_height_needs_schedule`).
+- **The first paragraph of §5.5** says `B.nextTarget` "is recomputed from the
+  *actual* `B.target`, so overachieving ratchets the schedule harder". The
+  code, and §5.5's own timestamp bullets, recompute it from the anchor: a
+  block's own target moves its `nextTarget` only at height 1, where the block
+  is the anchor (`next_ignores_own_target`, `next_at_anchor`).
+- **The exponent truncates toward zero** (`Int64` division) before the
+  floored shift, so it rounds toward the anchor's target on both sides: a
+  drift within `halfLife / 2^16` of schedule, ahead or behind, holds the
+  target. The spec's `2^(drift / halfLife)` does not say how the exponent
+  rounds; the vectors pin it.
+
+### Planted bugs
+
+`scripts/lean_mutants.py` also breaks the transcription one way at a time
+(and, where the bug has one, the closed form with it). The named
+declaration's proof must break (`failing_theorems` maps each build error to
+its declaration), and the vectors must catch every mutant of the
+transcription:
+
+| Mutant | Theorem | Vectors |
+|---|---|---|
+| whole doublings truncate instead of flooring | `targetOf_step` | disagree |
+| cubic coefficient typo (`971821376` → `917821376`) | `factor_lower` | disagree |
+| no floor at 1 | `targetOf_pos` (under `result_pos`) | disagree |
+| no 240-halving cutoff (the divisor leaves 256 bits) | `calculateAsertTarget_eq` | trap |
+| no ceiling check in the easing loop | `doubleLoop_eq` (under `calculateAsertTarget_eq`) | trap |
+| the fraction uses the signed remainder | `calculateAsertTarget_eq` | trap |
+| elapsed time is the wrapped unsigned difference | `elapsedOf_mono` (under `mono_timestamp`) | disagree |
+| the anchor is the parent, not the height-1 ancestor | `next_ignores_intervening` | (not a function input) |
+| the exponent division floors instead of truncating | (no theorem states it) | disagree |
+
+Not covered: the PoW check against the target, how the node resolves the
+anchor from storage (the theorems take the branch as given), and the
+`B.timestamp ≤ now` admission rule. `forward_shift` is stated at or behind
+schedule; ahead of schedule, flooring makes a shift of `k` half-lives ease
+by at most `2^k` plus rounding, which is not proven.
 
 ## Roadmap
 

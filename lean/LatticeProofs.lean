@@ -10,3 +10,5 @@ import LatticeProofs.MerkleProofs
 import LatticeProofs.Swap
 import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs
+import LatticeProofs.Asert
+import LatticeProofs.AsertProofs
