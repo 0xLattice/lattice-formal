@@ -198,7 +198,7 @@ def coinbase (b : Block) : List (Address × Int) :=
   | some r => [(r, (b.reward : Int) + fee b.actions)]
   | none => []
 
-/-- §5.2 step 11: with a recipient, the coinbase `M = reward + F` must fit a
+/-- §5.2 step 11: with a recipient, the coinbase `M = reward + F` must fit an
 `Int64` delta (zero credits nothing); a burned coinbase has no bound. -/
 def coinbaseFits (b : Block) : Bool :=
   match b.recipient with
