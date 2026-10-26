@@ -7,6 +7,13 @@ import LatticeProofs.MerkleCanon
 import LatticeProofs.MerkleWitness
 import LatticeProofs.MerkleRoot
 import LatticeProofs.MerkleProofs
+import LatticeProofs.MerkleBatch
+import LatticeProofs.MerkleBatchLemmas
+import LatticeProofs.MerkleBatchCanon
+import LatticeProofs.MerkleBatchCongr
+import LatticeProofs.MerkleBatchLive
+import LatticeProofs.MerkleBatchProofs
+import LatticeProofs.MerkleBatchExamples
 import LatticeProofs.Swap
 import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs

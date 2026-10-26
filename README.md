@@ -627,6 +627,15 @@ break the proofs:
 | a deletion at a key with no value succeeds | break | (not traced) |
 | a collapse merges a stub instead of failing | break | (not traced) |
 | the root's digest ignores `count` | break | (not traced) |
+| a batch: a child's proof inherits the parent's own write | break | (not traced) |
+| a batch: an insertion at a value-less branch point keeps the children untransformed | break | (not traced) |
+| a batch: the root `count` does not move | break | (not traced) |
+| a batch: a transformed child drops the siblings after it | break | (not traced) |
+| a batch: a removed child skips the collapse | break | (not traced) |
+| a batch: deletions under a value-less node skip the collapse | break | (not traced) |
+| a batch: a new child is not put in character order | break | (not traced) |
+| a batch proof: the expansion ignores the node's own deletion | break | (not traced) |
+| a batch: a split drops the cut node | break | (not traced) |
 
 Not modelled: general key-value actions and nonces (they move no value),
 signatures, policies, state growth, the encoding bounds of the other action
@@ -707,8 +716,8 @@ a time (`Root.applyAll`). `batch_eq_fold` reduces the gap to one property:
 if cashew's batch output is canonical and holds the map the writes make, it
 is the sequential result, because there is only one such trie. That property
 of cashew's batch code (`insertAll`, `transformPrefixLonger`,
-`transformDivergent`, the joint collapse and `resolveGrandchildren`) is not
-proven. Only the receipt sub-state is tied to the value model; balances and
+`transformDivergent`, the joint collapse and `resolveGrandchildren`) is
+proven under Batched writes below (`batch_eq_sequential`). Only the receipt sub-state is tied to the value model; balances and
 deposits use the same writes but are not.
 
 **Liveness is shown for a larger proof than cashew's.** `witness` resolves, at
@@ -717,7 +726,7 @@ children's nodes even when the write is not a deletion). cashew's `proof()`
 resolves the path and fetches grandchildren only where a batched deletion
 could leave one child (`shouldExpandForBatchedDeletion`). `witness_live` shows
 that the larger partial trie suffices; it does not show that cashew's smaller
-one does.
+one does. For a batch it does: `prove_live` (Batched writes below).
 
 **Spec and implementation differ** (found while mapping the model; Lattice
 is not changed here):
@@ -739,6 +748,95 @@ is not changed here):
   a value or at least two children, or that `count` matches the contents. The
   root is a function of the map only because every state is a transform
   output from the empty root.
+
+### Batched writes (`LatticeProofs/MerkleBatch*.lean`)
+
+§6.1 applies all of a block's writes to a sub-state at once, and cashew does
+that in one recursive pass (`MerkleDictionary.transform(transforms:)`), not
+one write after another. `MerkleBatch.lean` models that pass as cashew
+implements it: each node scopes the writes to the child they go under
+(`traverseChild`), takes the writes at its own key (`get([""])`), and
+dispatches on how the longest common prefix of the writes below it meets its
+prefix (`transformExactMatch`, `transformChildLonger`,
+`transformPrefixLonger`, `transformDivergent`), transforming the touched
+children, keeping the others, building fresh subtrees with `insertAll`, and
+collapsing once after all of them. The root refuses the empty key, never
+collapses, and moves `count` by the sum of the writes' deltas. It also models
+the partial trie `proof(paths:)` resolves for the batch (`Root.prove`):
+every touched path, a node's children's nodes where `shouldExpandForBatchedDeletion`
+expects a collapse (`expands`, `resolveGrandchildren`), and the refusals of
+`proof()` (an update or deletion where no key extends a node, an update at a
+value-less node, an insertion at a valued one, an update or deletion beneath
+a missing child). A batch has one write per key (`Batch.Nodup`; Lattice
+builds it as a dictionary).
+
+| Theorem | Spec |
+|---|---|
+| `batch_eq_sequential`: on a canonical trie the batch equals the writes applied one after another, in any order (`List.Perm`): the same trie when they succeed, failure when they fail | §6.1 |
+| `batch_correct`, `batch_fails_iff`: the batch makes the map its writes say, and fails exactly when a write is at the empty key or its precondition fails on the map before the batch | §6.1 b, §6.2-6.5 |
+| `batch_canonical`, `reachable_canonical`: the batch keeps the canonical form, `count` included, so every state batches derive from the empty state is canonical | §3.4.1 |
+| `batch_sound`, `batch_sound_or_collision`, `batch_commits`: a batch that succeeds on a partial trie whose root is a full trie's succeeds on the full trie with the same root, so a block verified on the resolved nodes commits to the canonical trie of the map its writes make; only the two input tries need be collision-free (the pass never compares digests) | §6.1 a, c |
+| `prove_complete`, `prove_live`, `proof_scope`: on a canonical trie, `proof()` builds its partial trie whenever the batch succeeds; that trie commits to the same root; and the batch succeeds on it exactly when it succeeds on the full trie, with the same root | §6.1 a |
+
+Each theorem is checked non-vacuous by evaluation in
+`MerkleBatchExamples.lean` (`#guard`): an update at a key with an insertion
+beneath it (`ab` updated, `abc` inserted), an insertion at a value-less branch
+point with a deletion and an insertion beneath it, two deletions that collapse
+a value-less node into its last child (which the proof resolves only because
+it expands), failing batches, and a partial trie whose stubs the batch needs.
+
+**Planted bugs.** Each is a realistic slip in the batch code; the two first
+are the bugs cashew had. Each is killed by the theorem named, whose statement
+it falsifies (a concrete counterexample checked by evaluation), and is
+registered in `scripts/lean_mutants.py` (`MerkleBatch.lean`).
+
+| Mutant | Killed by |
+|---|---|
+| `child-proof-inherits-own-write`: a child's paths keep the parent's own write (`traverseChild` without `childScoped`), so "update `K`, insert `K/c`" is refused | `prove_complete` |
+| `branch-insert-keeps-children`: an insertion at a value-less branch point keeps `children` untransformed | `batch_eq_sequential` |
+| `batch-count-not-moved`: the root's `count` does not move | `batch_eq_sequential` |
+| `touched-child-drops-later-siblings`: a transformed child is put back with the untransformed siblings after it, so the result depends on character order | `batch_eq_sequential` |
+| `removed-child-skips-collapse`: a value-less node whose only touched child is removed is not collapsed | `batch_canonical` |
+| `multi-delete-skips-collapse`: deletions that leave a value-less node one child do not collapse it | `batch_canonical` |
+| `new-child-not-in-order`: a fresh child is put first, not in character order | `batch_canonical` |
+| `expansion-ignores-own-delete`: `shouldExpandForBatchedDeletion` ignores the node's own deletion, so the collapse after it finds a stub | `prove_live` |
+| `split-drops-the-cut-node`: a write at a shorter prefix loses the node it cuts | `batch_eq_sequential` |
+
+**Readings.**
+- **Proof completeness.** cashew's `proof()` refused the batch "update `K`,
+  insert `K/c`": a child's paths came from `traverseChild`, which keeps the
+  node's own write, so the update at `K` was checked again beneath the
+  missing child `c` and refused. The model scopes a child's paths to the writes
+  beneath it (`childPaths`), and `prove_complete` holds; the inherited form is
+  the first mutant.
+- **The witness is more than the path.** §6.1 a says the path nodes of every
+  touched key are resolved. A collapse also reads the node it merges, which
+  is a sibling of the touched path: deleting `ac` and `ad` under a value-less
+  `a` merges `a` into `ab`, whose node no touched key reaches. cashew resolves
+  it (`resolveGrandchildren` where `shouldExpandForBatchedDeletion` holds),
+  and `prove_live` shows that this is always enough; without it the
+  transform would reach a stub (the `expansion-ignores-own-delete` mutant).
+- **Deletion at a value-less node.** `proof()` does not refuse a deletion at
+  a node that has no value; the transform does, so the block is invalid as
+  §6.1 b requires (`batch_fails_iff`). The examples check both.
+- `proof()` checks preconditions only where it can see they fail; the
+  transform checks all of them. `proof_scope` is stated against the batch on
+  the full trie, so it does not depend on which of the two refuses.
+
+**Abstractions and limits.** Keys are flat: a write's key is the whole
+string, and nested dictionaries as values (`hasNestedWrites`) are not
+modelled. The common prefix of the writes is computed directly; cashew reads
+it from the `ArrayTrie` the writes are kept in, which is the same on a
+compressed `ArrayTrie`. `transformPrefixLonger` is modelled as an exact match
+at a value-less node whose one child is the cut node, which is what its loop
+computes. The proof is built from the full trie, a node resolved where a key
+reaches it (Lattice's `.targeted` resolution) and its children's nodes where
+its parent expanded; cashew fetches the same nodes through the fetcher.
+`shouldExpandForBatchedDeletion` also counts the node's own write in a
+child's paths; that changes neither of its counts at the nodes where it is
+asked. That the proof resolves nothing beyond what the batch reads is not
+proven: `proof_scope` shows it is enough, not that it is least. The digests
+of the batch's output are not traced against cashew.
 
 ```sh
 cd lean && lake build                    # includes the Merkle proofs

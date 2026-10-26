@@ -1,5 +1,6 @@
 import LatticeProofs.Conservation
 import LatticeProofs.MerkleProofs
+import LatticeProofs.MerkleBatchProofs
 import LatticeProofs.Swap
 import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs
@@ -135,4 +136,21 @@ section
 #print axioms shift_does_not_compound
 #print axioms next_ignores_own_target
 #print axioms next_at_anchor
+end
+
+open Lattice.Merkle in
+section
+#print axioms batch_eq_sequential
+#print axioms batch_correct
+#print axioms batch_fails_iff
+#print axioms batch_canonical
+#print axioms reachable_canonical
+#print axioms applyAll_complete
+#print axioms applyAll_fails
+#print axioms batch_sound
+#print axioms batch_sound_or_collision
+#print axioms batch_commits
+#print axioms prove_complete
+#print axioms prove_live
+#print axioms proof_scope
 end
