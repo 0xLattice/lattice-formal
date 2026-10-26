@@ -102,6 +102,15 @@ MCTipsParentBad ==
     [P |-> [canonical |-> "p3", validated |-> "p3"],
      C |-> [canonical |-> "c3", validated |-> "c1"]]
 
+\* HELD AND INVALID: c3's anchor is sideways (continuity held) and its
+\* transition is invalid.  The transition failure is a verdict under any
+\* continuity outcome, so c3 is excluded: the child's canonical descent
+\* stops at c1.  Its work still weighs.
+MCValidHeldInvalid == [x \in AllBlocks |-> x # "c3"]
+MCTipsHeldInvalid ==
+    [P |-> [canonical |-> "p2", validated |-> "p2"],
+     C |-> [canonical |-> "c1", validated |-> "c1"]]
+
 \* PARENT AVAILABILITY: p1's body never arrives, so c1's anchor is never
 \* executed: c1 is HELD (not invalid) and the child acts on c2's branch,
 \* up to c4.  Child weights do not move.
