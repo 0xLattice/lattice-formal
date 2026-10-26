@@ -1,6 +1,8 @@
 # lattice-formal
 
-Formal models of the Lattice protocol, checked with TLC.
+Formal models of the Lattice protocol: TLA+ models checked with TLC, trace
+validation of the implementation against them, and Lean proofs of value
+conservation.
 
 The models are written from the normative specification
 ([Lattice `docs/spec.md`](https://github.com/adalinxx/Lattice/blob/main/docs/spec.md)),
@@ -10,7 +12,7 @@ abstractions. It does not mean Lattice is bug-free.
 
 ## Run
 
-Requires Java 11+. The pinned `tla2tools.jar` (v1.7.4, SHA-256 checked) is
+TLA+ requires Java 11+. The pinned `tla2tools.jar` (v1.7.4, SHA-256 checked) is
 fetched on first use.
 
 ```sh
@@ -118,8 +120,8 @@ check, so one node is enough here.
 
 | Property | Kind | Spec |
 |---|---|---|
-| `PhysicalWorkOnce`: a child block's weight equals the sum over the distinct physical grinds it rests on; its components (child grinds, attributed runs) never share a grind | invariant | §9.1, §9.10 |
-| `AnchoredAtExecuted`: a validated child block is anchored at a state the parent's executed frontier produced | invariant | §5.3 step 6, §9.5 |
+| `PhysicalWorkOnce`: a child block's weight equals the sum over the distinct physical grinds it rests on, computed from an independent reference (the deepest committing ancestor, not `NearestCarrier`) | invariant | §9.1, §9.10 |
+| `AnchoredAtExecuted`: a validated child block is anchored at a state the parent's executed frontier produced; a child genesis never at empty | invariant | §5.1 rule 4, §5.3 step 6, §9.5 |
 | `AnchorsAdvance`: along validated child history, anchors never move back to empty or sideways | invariant | §5.3 step 6, §12.5.8 |
 | `WorkMonotone`: no step lowers any block's weight on either chain, attributed runs included | action | §9.10 "only ever raised" |
 | `TipsWellFormed`, `VerdictsPermanent` | invariant, action | §9.9 |
@@ -133,50 +135,153 @@ exclusion and of parent canonicity".
 | Config | Scenario |
 |---|---|
 | `MCHierarchy_Main.cfg` | the parent's canonical tip (`p2`) is on a different branch from the child's anchor (`p1`); the child still validates there |
-| `MCHierarchy_P2Bad.cfg` | `p2` is invalid, so the parent's canonical tip moves to `p4`; nothing in the child moves |
-| `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling |
+| `MCHierarchy_ParentBad.cfg` | `p2` and `p4` are invalid, so the parent's canonical tip moves to `p3`. The child block anchored at the excluded `p2` is held, not excluded, and `p4` still counts in its carrier's run; nothing in the child moves |
+| `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling branch |
+
+The shared scenario also covers:
+- a second child genesis with an empty anchor, which is invalid (§5.1 rule 4) and excluded once the other root executes;
+- a parent fork below a carrier where each branch has its own carrier, so runs partition;
+- a committed child block the child chain never holds, whose run is never credited;
+- a merged grind credited differently at its parent and child locations.
 
 In every model the child's fork is decided by the attributed run alone: `c1`
 and `c2` tie on their own work, `c2` has the smaller CID, and `c1`'s parent
 run is what makes it win.
+
+Admission carries the block's securing grind in the same batch, as the
+implementation's import does. Staged locations ahead of admission are covered
+by `ForkChoice.tla`.
 
 ### Planted bugs
 
 | Mutant | Model | Must be caught by |
 |---|---|---|
 | attributed run also counts the carrier's own grind | Main | `PhysicalWorkOnce` |
+| nearest carrier skips the block itself | Main | `PhysicalWorkOnce` |
 | no run attribution | Main | `ExpectedAnswer` |
-| runs skip excluded parent blocks (follow canonicity) | P2Bad | `ExpectedAnswer` |
+| runs skip excluded parent blocks (follow canonicity) | ParentBad | `ExpectedAnswer` |
 | continuity requires the anchor on the parent's canonical chain | Main | `ExpectedAnswer` |
 | continuity accepts a weighed but unexecuted anchor | P1Gap | `AnchoredAtExecuted` |
 | continuity allows a sideways anchor | Main | `AnchorsAdvance` |
+| a child genesis may anchor at empty | Main | `AnchoredAtExecuted` |
 
-### Interpretation choices
+### Readings and limits
 
-Two places where the spec admits more than one reading. The model takes one
-reading at each:
-
-- **When a sideways anchor becomes a verdict.** The model records the child's
-  exclusion as soon as the node holds both anchors' parent headers and the
-  older is not an ancestor of the newer. Ancestry of held headers is
-  immutable, so this is a completed deterministic check (§9.9). The other
-  reading waits until the new anchor is also executed.
+- **A sideways anchor is held, never a verdict.** §9.5: a child "anchoring
+  elsewhere is anchoring at something this parent has not checked, and the
+  correct answer is the retriable 'not proven here', not a verdict". State
+  CIDs are not block IDs, so a later header could still supply the path; the
+  model's block-as-state abstraction must not turn that into a verdict.
 - **An anchor at an excluded parent block** is never proven, so the child
-  block stays held (weighed, unvalidated) forever rather than being excluded.
-  §9.5 calls continuity across unexecuted blocks "not proven here", never a
-  verdict.
+  block stays held forever rather than being excluded (§9.9: an excluded
+  block is "never treated as invalid by any peer on that account").
+- **Header-rule exclusions** (§9.9: `spec` or `prevState` mismatch, recorded
+  the moment a block is weighed) are not modelled; exclusion here always
+  follows execution.
+- **"Equality is never evidence" is unfalsifiable here**: a child block
+  executes only after its predecessor validated, so an equal anchor was
+  already proven. The hazard lives in implementations that act on weighed
+  predecessors.
+- Not modelled: multi-level recursion (Nexus → A → B, §9.10) and more than
+  one child directory.
 
-Also not modelled: the equality and back-to-empty continuity cases (no block
-in these models repeats its predecessor's anchor or drops to empty),
-multi-level recursion (Nexus → A → B, §9.10), and more than one child
-directory.
+## Trace validation (`specs/TraceForkChoice.tla`)
+
+The link from the model to the Swift code. Lattice's
+`ForkChoiceTraceExportTests` drives the real `ChainTree` with a seeded random
+sequence of facts and records, after every event, what the implementation
+decided. `scripts/trace_check.py` replays each trace through `ForkChoice.tla`:
+
+- each event must be a spec step, and the implementation's accept/refuse must
+  match whether the spec allows it (a mismatch deadlocks TLC);
+- after each event, the canonical tip, the validated (act-on) tip, every held
+  block's subtree weight and its prefix work must equal the spec's.
+
+```sh
+scripts/trace_check.py traces/lattice-3ebc126            # all checks
+scripts/trace_check.py --selftest traces/lattice-3ebc126/trace-2.json
+```
+
+The self-test corrupts a passing trace three ways (a weight, a prefix work, an
+accept flag) and requires each to be caught.
+
+`traces/lattice-3ebc126/` holds 20 traces (800 events) from Lattice PR #31 at
+`3ebc126`. Every event matches the spec on accept/refuse, canonical tip,
+subtree weight and prefix work.
+
+### Divergence found: the act-on tip at the genesis fork
+
+The implementation's validated tip differs from the spec in 7 of 20 traces,
+always in the same shape: two genesis roots, where the executed root is not
+the canonical (heaviest) one. The implementation returns no act-on tip; the
+spec acts on the executed root.
+
+- Spec: §9.9, "descending from genesis, at each fork it follows the heaviest
+  child that is validated", and §9.4, a chain "may hold several genesis roots;
+  the same rule applies to them".
+- Implementation: `ChainTree.heaviestExecutedTip` starts its descent at
+  `executedPrefix()`, which follows the canonical root only, so the choice
+  among roots is not restricted to executed ones.
+- Consequence: on a child chain, which may hold several genesis roots, a
+  heavier competing genesis whose body is withheld leaves every node with no
+  act-on tip. That is the withheld-header stall the restricted descent closes
+  at every other fork.
+
+Until it is resolved, CI checks the traces with `--skip ValidatedTipMatches`.
+
+## Value conservation (`lean/`)
+
+Lean 4 proofs, core library only, toolchain pinned in `lean/lean-toolchain`.
+`LatticeProofs/Model.lean` models the value-bearing part of a block's state
+transition from the spec:
+- account balances, deleted at zero (§6.2);
+- deposits and withdrawals, withdrawals first, with a permanent zero spent
+  marker (§6.4);
+- receipts and the debit and credit they derive (§6.5);
+- the parent receipt a withdrawal needs (§8.1 phase 3);
+- the fee rule and coinbase (§8.2).
+
+| Theorem | Spec |
+|---|---|
+| `fee_nonneg`: a valid block's fee is never negative (no value creation) | §8.2, §8.3 |
+| `spendable_with_recipient`, `spendable_without_recipient`: spendable supply changes by exactly `reward + W - D`, or `W - D - F` when fees burn | §8.2 |
+| `locked_change`: locked value changes by exactly `D - W` | §8.2 |
+| `value_with_recipient`, `value_without_recipient`: spendable plus locked changes by exactly the reward, or minus the burned fee | §8.2, §12.2 |
+| `value_chain`: over any chain segment, total value moves only by issued rewards and burned fees | §12.2 |
+| `withdrawal_authorized`: each withdrawal takes exactly the nonzero amount its deposit holds, and `parentState` holds the receipt naming its withdrawer | §8.1, §12.4.3-5 |
+| `withdrawal_spends`, `spent_persists`, `spent_is_final`: a withdrawn deposit becomes a spent marker forever, and no valid block deposits or withdraws it again | §8.3, §12.4.6 |
+| `deposit_fresh`, `receipt_fresh`: insertion only at absent keys | §12.4.1-2 |
+| `receipt_provenance`: every receipt was inserted by a receipt action | §6.5 |
+| `applyBlock_wf`: sub-states keep distinct keys and no zero balance | §6.2 |
+
+```sh
+cd lean && lake build                    # the proofs
+lake env lean LatticeProofs/Axioms.lean  # only propext, Classical.choice, Quot.sound
+python3 scripts/lean_mutants.py          # from the repo root
+```
+
+`scripts/lean_mutants.py` breaks one rule of the model at a time and requires
+the proofs to stop building. Each mutant makes at least one stated theorem
+false:
+- a withdrawal leaves no spent marker;
+- the coinbase pays the reward without the fees;
+- no fee rule;
+- a withdrawal ignores the parent receipt;
+- over-withdrawal;
+- a deposit overwrites;
+- a negative balance is clamped.
+
+Not modelled: general key-value actions and nonces (they move no value),
+signatures, policies, state growth, the `Int64` and `UInt64` width bounds, the
+genesis premine, and the Merkle proofs themselves (each map stands for its
+proven sub-state).
 
 ## Roadmap
 
 1. **Hierarchy depth:** a grandchild level, so attributed runs recurse
-   (§9.10), plus the equality and back-to-empty continuity cases.
-2. **Trace validation:** record fact streams from lattice-node's deterministic
-   tests and simulator, then check each trace is a behaviour of these specs.
-   This is the link from model to Swift code.
-3. **Proofs:** Lean for cross-chain value conservation (§8.2, §12.2,
-   §12.4).
+   (§9.10), and header-rule exclusions.
+2. **Hierarchy traces:** export parent and child traces (run attribution,
+   continuity) and check them against `Hierarchy.tla`.
+3. **Lean refinement:** connect `Model.lean` to the implementation with the
+   same trace approach, or extend it with Merkle proof semantics and width
+   bounds.
