@@ -365,8 +365,8 @@ transition from the spec:
 | `balances_fit`, `coinbase_fits`: every balance fits a `UInt64`, and a paid coinbase an `Int64` | §6.2, §5.2 |
 | `receipt_value_provenance`, `deposit_value_provenance`: after a valid block, every receipt entry (with its withdrawer) and every live deposit (with its amount) was already there or was inserted by an action of the block | §6.4, §6.5 |
 | `receipt_chain_provenance`, `deposit_chain_provenance`: the same over a valid run from empty receipt (deposit) state: each entry comes from an action in some block of the run | §6.4, §6.5 |
-| `swap_atomic`: every withdrawal in a valid child run is backed by a receipt in a valid parent block that debited the withdrawer and credited the demander, and by a deposit of exactly the withdrawn amount in a strictly earlier child block | §6.4, §6.5, §8.1, §12.4 |
-| `withdrawal_once`, `receipt_once`, `payment_releases_once`: across a valid run, no two withdrawal actions release the same deposit, no two receipt actions record the same payment, and no two withdrawals consume the same parent receipt | §8.3, §12.4 |
+| `swap_atomic`: every withdrawal in a valid child run is backed by a receipt in a valid parent block whose account actions include the withdrawer's debit and the demander's credit (gross, before netting), and by a deposit of exactly the withdrawn amount in a strictly earlier child block | §6.4, §6.5, §8.1, §12.4 |
+| `withdrawal_once`, `receipt_once`, `payment_releases_once`: across a valid run, no two withdrawal actions release the same deposit, no two receipt actions record the same payment, and, within one child run, no two withdrawals consume the same parent receipt | §8.3, §12.4 |
 
 ```sh
 cd lean && lake build                    # the proofs
@@ -388,11 +388,11 @@ Atomicity here is the safety half: no deposit is released without the
 payment. `swap_atomic` takes a valid parent run from empty receipts, a valid
 child run from a well-formed state with no deposits, and the hypothesis that
 the withdrawing child block's `parentState` receipts are those of some state
-the parent run reached. Then every child withdrawal has its receipt in a valid parent
+the parent run reached. Then each withdrawal in that block has its receipt in a valid parent
 block, that block's account actions include the withdrawer's debit and the
 demander's credit, and a strictly earlier child block made the deposit
 (withdrawals see only `prevState`, so a deposit cannot be withdrawn in its own
-block). The hypothesis is needed only for the withdrawing block.
+block).
 
 The payment is stated gross, not net: the derived debit `(withdrawer,
 -amountDemanded)` and credit `(demander, amountDemanded)` are among the
