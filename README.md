@@ -243,6 +243,83 @@ by `ForkChoice.tla`.
   is the first where it can go wrong. The three-level model has no forks,
   verdicts or missing bodies; those are checked at two levels only.
 
+## Swaps under forks and reorgs (`specs/SwapReorg.tla`)
+
+What a cross-chain swap guarantees when either chain forks or reorganizes
+(§8.1, §8.3, §5.3 step 6, §9.5, §12.4). `Swap.lean` proves atomicity along
+one valid branch; this model lets both chains fork and lets either
+canonical tip move to any selectable block at any time, so each property
+holds under every reorganization. Fork choice itself is not modelled
+(`Hierarchy.tla` covers it): a tip may land wherever enough work could put
+it.
+
+A parent chain P and one child chain C each grow to four blocks, any block
+extendable, with one swap. A P block inserts receipts (the withdrawer pays
+the demander, §6.5), or is forged: it declares receipts in its `postState`
+without a transition that produces them, and is weighed but never
+executed. A valid P block above a forged one executes against the fetched
+state but is off the executed-from-genesis frontier (§8.3 rule 2). A C
+block deposits, withdraws, or does nothing; only valid C blocks are mined,
+so the validity rule is the guard under test. As in `Hierarchy.tla`, a P
+block stands for the state it produced and a C block's `parentState` is its
+anchor. A branch's deposit state is its replay from genesis.
+
+| Property | Kind | Spec |
+|---|---|---|
+| `WithdrawalBackedOnAnchorBranch`: every withdrawal on any child branch, canonical or not, is backed by its paid receipt (inserted by a frontier block) on every parent branch containing that block's anchor | invariant | §8.1 phase 3, §8.3, §12.4.4 |
+| `NoDoubleRelease`: on any child branch, a deposit is released at most once | invariant | §8.3, §12.4.6 |
+| `ReleaseHasDeposit`: a release needs the deposit in a strictly earlier block of the same branch | invariant | §8.1 phase 3, §12.4.3 |
+| `SpentIffReleased`: a branch's replayed state shows a deposit spent exactly when that branch released it. State is per branch: the new canonical branch's replay does not contain the abandoned release, and never revives a deposit the new branch spent | invariant | §6.4 |
+| `DemanderSafeIfAnchorCanonical`: once the canonical child tip anchors on the canonical parent chain, every release on the canonical child chain is paid on the canonical parent chain | invariant | §5.3 step 6, §8.1 "Receipt canonicity" |
+| `WithdrawerCanRedeem` (a lemma that the withdrawal guard is not too strict, not a guarantee: nothing makes a miner include the release): a receipt paid on the canonical parent chain can be redeemed by a block on the canonical child tip, anchored at the parent tip, whenever the deposit is live there and the tip anchors on the canonical parent chain | invariant | §8.1 phase 3 |
+
+Witnesses (each must FAIL):
+
+| Config | Fails | Shows |
+|---|---|---|
+| `MCSwapReorg_WParentReorg.cfg` | `NaiveCanonicalBacking`: a release on the canonical child chain is paid on the canonical parent chain, even after the parent reorganizes away from the receipt | the demander's exposure: the child keeps a release anchored on an abandoned parent branch |
+| `MCSwapReorg_WChildReorg.cfg` | `PaidImpliesReleased`: once released, a receipt paid on the canonical parent chain stays released on the canonical child chain | the withdrawer's exposure: the child reorganizes away from the release (in the shortest trace, the deposit with it) while the payment stands |
+| `MCSwapReorg_WTwoBranches.cfg` | `ReleasedOnOneBranch` | one deposit released on two child branches: `NoDoubleRelease` is per branch |
+| `MCSwapReorg_WRedeem.cfg` | `NoRedeemAfterReorg` | `WithdrawerCanRedeem` applies after a release was reorged out |
+| `MCSwapReorg_WDemanderSafe.cfg` | `NoSafeReleaseBesideParentFork` | `DemanderSafeIfAnchorCanonical` applies while another executed parent branch lacks the receipt |
+
+### Planted bugs
+
+| Mutant | Must be caught by |
+|---|---|
+| a withdrawal accepts any receipt the node has seen on any parent branch | `WithdrawalBackedOnAnchorBranch` |
+| a withdrawal reads the parent's canonical tip instead of its `parentState` | `WithdrawalBackedOnAnchorBranch` |
+| continuity accepts a weighed, unexecuted anchor | `WithdrawalBackedOnAnchorBranch` |
+| continuity accepts an executed anchor off the executed-from-genesis frontier | `WithdrawalBackedOnAnchorBranch` |
+| an anchor may move sideways | `DemanderSafeIfAnchorCanonical` |
+| replay drops the spent marker (the key is deleted, not zeroed), so the deposit is made again and released twice against one receipt (`MCSwapReorg_Replay.cfg`: one parent block, four child blocks) | `NoDoubleRelease` |
+| a withdrawal accepts the spent marker (checks presence, not a nonzero value) | `NoDoubleRelease` |
+| a withdrawal skips the deposit proof | `ReleaseHasDeposit` |
+| a withdrawal needs the receipt inserted in the anchor block itself | `WithdrawerCanRedeem` |
+
+### Readings and limits
+
+- **The guarantee is conditional on the anchor's branch.** A release is
+  backed on every parent branch through its anchor, whichever is
+  canonical. Nothing ties it to the parent's canonical chain: §8.1 relies
+  on the child reorganizing once the honest branch, anchored on the
+  canonical parent, is heavier. That step is fork choice and hashrate,
+  outside this model, which is why the naive canonical form fails here.
+- **Exposures.** The demander is safe once the child's canonical tip
+  anchors at or above the parent block holding the receipt and both stay
+  canonical. The withdrawer is exposed until the release is confirmed on
+  the child: a child reorg can drop it, and if the deposit is dropped too
+  there is nothing to redeem; while the deposit stays live on the
+  canonical child, the receipt can be redeemed again (`WithdrawerCanRedeem`
+  says the guard allows it; nothing makes a miner include it). If the
+  canonical child tip anchors on an abandoned parent branch, the withdrawer
+  cannot redeem until the child reorganizes. A receipt is admitted
+  without any deposit (§8.1 phase 2), so paying before the deposit is
+  confirmed on the child is the withdrawer's risk.
+- Not modelled: fork choice, amounts and accounts (`Swap.lean`), more than
+  one swap or directory, and invalid child blocks (excluded, never
+  canonical).
+
 ## Trace validation (`specs/TraceForkChoice.tla`)
 
 The link from the model to the Swift code. Lattice's
@@ -457,7 +534,8 @@ Not covered:
   parent block" means on the parent branch the child anchors to, which may
   not be canonical: parent canonicity does not enter (§9.9). If that branch
   is abandoned, the payment reverts, and the child withdrawal goes with it
-  only through reorg coupling (§5.3, fork choice), which is not proved here.
+  only through reorg coupling (§5.3, fork choice), which is not proved here;
+  `specs/SwapReorg.tla` checks what holds under forks and reorgs.
 
 ### Refinement by traces
 
