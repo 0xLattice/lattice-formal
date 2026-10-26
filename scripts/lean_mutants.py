@@ -3,8 +3,9 @@
 
     scripts/lean_mutants.py [value-trace-dir...]
 
-Each mutant breaks one rule of the model (lean/LatticeProofs/Model.lean) and
-must be killed by what it names:
+Each mutant breaks one rule of the value model (lean/LatticeProofs/Model.lean)
+or of the Merkle trie model (lean/LatticeProofs/Merkle.lean) and must be
+killed by what it names:
 - "proofs": the proofs must then fail to build, so the theorems depend on
   that rule;
 - "traces": the model must then disagree with the implementation on some
@@ -29,7 +30,7 @@ SEQUENTIAL_BALANCES = """  ds.foldlM
       else some (acc.set o v.toNat))
     m"""
 
-# (name, killed by, old text in Model.lean, new text)
+# (name, killed by, old text, new text[, model file, Model.lean by default])
 MUTANTS = [
     ("withdrawal-leaves-no-spent-marker", {"proofs", "traces"},
      "applyWithdrawals dir parentReceipts (m.set k 0) as",
@@ -81,13 +82,37 @@ MUTANTS = [
       else if v = 0 then some (acc.erase o)
       else some (acc.set o v.toNat))
     m""", SEQUENTIAL_BALANCES),
+    # The Merkle trie (cashew's radix trie): only the proofs pin these down.
+    ("delete-skips-collapse", {"proofs"},
+     "      | .delete, some _ => collapse p ks",
+     "      | .delete, some _ => some (some (.node p none ks))", "Merkle.lean"),
+    ("digest-ignores-prefix", {"proofs"},
+     "  | .node p v ks => H (.node p v (ks.digests H))",
+     "  | .node _ v ks => H (.node [] v (ks.digests H))", "Merkle.lean"),
+    ("stub-read-as-absent-on-insert", {"proofs"},
+     """    if c' = c then
+      match t.apply o (c :: r) with""",
+     """    if c' = c then
+      match t with
+      | .stub _ => .missing
+      | t =>
+      match t.apply o (c :: r) with""", "Merkle.lean"),
+    ("split-keeps-old-prefix", {"proofs"},
+     "(.cons c (.node (c :: r) val ks) .nil)",
+     "(.cons c (.node (k ++ c :: r) val ks) .nil)", "Merkle.lean"),
+    ("root-count-not-moved", {"proofs"},
+     "some ⟨s.count + o.delta, ks⟩",
+     "some ⟨s.count, ks⟩", "Merkle.lean"),
+    ("children-not-sorted", {"proofs"},
+     "if c < c' then .cons c t (.cons c' t' rest) else .cons c' t' (rest.ins c t)",
+     ".cons c t (.cons c' t' rest)", "Merkle.lean"),
 ]
 
 
-def proofs_break(work):
+def proofs_break(work, file):
     r = subprocess.run(["lake", "build"], cwd=work, capture_output=True, text=True)
     broken = sorted(set(re.findall(r"^error: (LatticeProofs/\w+\.lean)", r.stdout, re.M)))
-    if r.returncode != 0 and "LatticeProofs/Model.lean" in broken:
+    if r.returncode != 0 and f"LatticeProofs/{file}" in broken:
         return None  # the mutant itself does not compile
     return r.returncode != 0
 
@@ -104,11 +129,12 @@ def traces_disagree(work, traces):
 def main():
     traces = sorted(t for d in sys.argv[1:] for t in pathlib.Path(d).glob("*.json"))
     failures = 0
-    for name, killers, old, new in MUTANTS:
+    for name, killers, old, new, *file in MUTANTS:
+        file = file[0] if file else "Model.lean"
         with tempfile.TemporaryDirectory() as d:
             work = pathlib.Path(d) / "lean"
             shutil.copytree(LEAN, work, ignore=shutil.ignore_patterns(".lake"))
-            model = work / "LatticeProofs" / "Model.lean"
+            model = work / "LatticeProofs" / file
             text = model.read_text()
             if text.count(old) != 1:
                 print(f"MUTANT {name}: replacement matched {text.count(old)} times")
@@ -117,7 +143,7 @@ def main():
             model.write_text(text.replace(old, new))
             results = {}
             if "proofs" in killers:
-                results["proofs"] = proofs_break(work)
+                results["proofs"] = proofs_break(work, file)
             if traces and "traces" in killers:
                 results["traces"] = traces_disagree(work, traces)
             if not results:
