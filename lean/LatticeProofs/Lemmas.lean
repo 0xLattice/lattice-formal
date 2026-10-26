@@ -158,7 +158,7 @@ theorem applyWithdrawals_spec {dir : String} {pr : Map ReceiptKey Address} :
       simp only [applyWithdrawals] at h
       split at h
       · rename_i hc
-        obtain ⟨hget, hne, hpr⟩ := hc
+        obtain ⟨hget, hne, -, hpr⟩ := hc
         have hn' := Map.nodup_set hn ⟨dm0, amtD0, n0⟩ 0
         obtain ⟨r1, r2, r3, r4, r5⟩ := applyWithdrawals_spec as _ m' hn' h
         have ht := Map.total_set hn ⟨dm0, amtD0, n0⟩ 0
@@ -272,7 +272,7 @@ theorem applyReceipts_spec :
         · intro a k hmem hk
           rw [List.mem_cons] at hmem
           rcases hmem with heq | hmem
-          · subst heq; simp [receiptKeyOf] at hk; subst hk; exact hget
+          · subst heq; simp [receiptKeyOf] at hk; subst hk; exact hget.1
           · have q := r2 a k hmem hk
             rw [Map.get?_set] at q
             split at q

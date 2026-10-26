@@ -75,5 +75,10 @@ jobs:
           ! grep -n -E '\bsorry\b|\badmit\b|^axiom|native_decide|implemented_by' LatticeProofs/*.lean
           lake env lean LatticeProofs/Axioms.lean | tee axioms.txt
           ! grep -v -E "depends on axioms: \[(propext|Classical.choice|Quot.sound)(, (propext|Classical.choice|Quot.sound))*\]" axioms.txt
-      - name: Planted bugs break the proofs
-        run: python3 scripts/lean_mutants.py
+      - name: Implementation value traces conform to the model
+        working-directory: lean
+        run: |
+          lake build tracecheck
+          .lake/build/bin/tracecheck ../traces/value-2684a1e/*.json
+      - name: Planted bugs break the proofs or the traces
+        run: python3 scripts/lean_mutants.py traces/value-2684a1e

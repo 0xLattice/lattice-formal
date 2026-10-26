@@ -129,15 +129,16 @@ def accountActionsValid : List Action → Bool
 
 /-! ## Sub-state transitions -/
 
-/-- §6.4 withdrawals, in order: the deposit must hold exactly the nonzero
-`amountWithdrawn`, and `parentState.receiptState` must name the withdrawer
-under this chain's directory (§8.1 phase 3).  It becomes the spent marker. -/
+/-- §6.4 withdrawals, in order: a nonzero `amountDemanded`, the deposit must
+hold exactly the nonzero `amountWithdrawn`, and `parentState.receiptState`
+must name the withdrawer under this chain's directory (§8.1 phase 3).  It
+becomes the spent marker. -/
 def applyWithdrawals (dir : String) (parentReceipts : Map ReceiptKey Address) :
     Map DepositKey Nat → List Action → Option (Map DepositKey Nat)
   | m, [] => some m
   | m, .withdrawal w n dm amtD amtW :: as =>
       let k : DepositKey := ⟨dm, amtD, n⟩
-      if m.get? k = some amtW ∧ amtW ≠ 0 ∧
+      if m.get? k = some amtW ∧ amtW ≠ 0 ∧ amtD ≠ 0 ∧
           parentReceipts.get? ⟨dir, dm, amtD, n⟩ = some w then
         applyWithdrawals dir parentReceipts (m.set k 0) as
       else none
@@ -153,12 +154,13 @@ def applyDeposits : Map DepositKey Nat → List Action → Option (Map DepositKe
       else none
   | m, _ :: as => applyDeposits m as
 
-/-- §6.5 receipts, in order: insertion at an absent key. -/
+/-- §6.5 receipts, in order: a nonzero `amountDemanded`, inserted at an
+absent key. -/
 def applyReceipts : Map ReceiptKey Address → List Action → Option (Map ReceiptKey Address)
   | m, [] => some m
   | m, .receipt w n dm amtD d :: as =>
       let k : ReceiptKey := ⟨d, dm, amtD, n⟩
-      if m.get? k = none then applyReceipts (m.set k w) as else none
+      if m.get? k = none ∧ amtD ≠ 0 then applyReceipts (m.set k w) as else none
   | m, _ :: as => applyReceipts m as
 
 /-- The net delta an owner receives from a list of account actions. -/
