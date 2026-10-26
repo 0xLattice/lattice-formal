@@ -115,6 +115,19 @@ MCTipsHeldInvalid ==
      C |-> [canonical |-> "c1", validated |-> "c1"],
      G |-> [canonical |-> "none", validated |-> "none"]]
 
+MCHeaderNone == {}
+
+\* HEADER RULES (§9.9): p3, the carrier of c1, and c3 break a header
+\* validity rule, so each is excluded the moment it is weighed.  p3 and
+\* its descendant p4 still weigh, and p3's run still holds p4, so c1 keeps
+\* its attributed 1 and the child weights do not move.  c3 is excluded
+\* rather than held, so the child's canonical descent stops at c1.
+MCHeaderBadSet == {"p3", "c3"}
+MCTipsHeaderBad ==
+    [P |-> [canonical |-> "p2", validated |-> "p2"],
+     C |-> [canonical |-> "c1", validated |-> "c1"],
+     G |-> [canonical |-> "none", validated |-> "none"]]
+
 \* PARENT AVAILABILITY: p1's body never arrives, so c1's anchor is never
 \* executed: c1 is HELD (not invalid) and the child acts on c2's branch,
 \* up to c4.  Child weights do not move.

@@ -33,6 +33,8 @@ CONSTANTS
     Anchor,     \* lower-chain block -> block of the chain above, or None: its parentState
     Valid,      \* Blocks -> BOOLEAN: the block's own transition verdict
     Available,  \* blocks whose bodies can be obtained
+    HeaderBad,  \* non-root blocks whose header breaks a validity rule (§9.9)
+    PrevState,  \* Blocks -> same-chain block or None: the declared prevState
     ExpectedTips,       \* [ch -> [canonical |-> b, validated |-> b]] (oracle)
     ExpectedChildWork   \* CBlocks \cup GBlocks -> Nat (oracle, shared by every model)
 
@@ -45,6 +47,16 @@ ChainBlocks(ch) == CASE ch = "P" -> PBlocks [] ch = "C" -> CBlocks [] OTHER -> G
 ChainOf(b) == CHOOSE ch \in Chains : b \in ChainBlocks(ch)
 
 ASSUME /\ None \notin Blocks
+       /\ HeaderBad \subseteq Blocks
+       \* §9.9: roots enter only as genesis blocks, never from a header.
+       /\ \A b \in HeaderBad : Parent[b] # None
+       \* A block's declared prevState names a state of its own chain (a
+       \* block, or None for empty); a root's is empty.  Declaring one other
+       \* than the parent's is a header-rule violation (§9.9).
+       /\ \A b \in Blocks :
+              /\ PrevState[b] \in ChainBlocks(ChainOf(b)) \cup {None}
+              /\ Parent[b] = None => PrevState[b] = None
+              /\ Parent[b] # None /\ PrevState[b] # Parent[b] => b \in HeaderBad
        /\ PBlocks \cap CBlocks = {} /\ PBlocks \cap GBlocks = {} /\ CBlocks \cap GBlocks = {}
        /\ \A ch \in Chains : \A b \in ChainBlocks(ch) : Parent[b] \in ChainBlocks(ch) \cup {None}
        /\ \A x, y \in Blocks : x # y => CidRank[x] # CidRank[y]
@@ -53,8 +65,10 @@ ASSUME /\ None \notin Blocks
        /\ Commits \subseteq (PBlocks \X CBlocks) \cup (CBlocks \X GBlocks)
        \* A block's children index names one block per directory.
        /\ \A pc, qc \in Commits : pc[1] = qc[1] => pc = qc
-       \* §5.3 step 3: a committed child's parentState is its carrier's prevState.
-       /\ \A pc \in Commits : Anchor[pc[2]] = Parent[pc[1]]
+       \* §5.3 step 3: a committed child's parentState is its carrier's
+       \* declared prevState (its parent's state unless the carrier breaks
+       \* the prevState header rule).
+       /\ \A pc \in Commits : Anchor[pc[2]] = PrevState[pc[1]]
        \* A merged grind lies on one proof path: at each lower level it
        \* lands on the block its carrier above commits.
        /\ \A o1, o2 \in Obs :
@@ -202,6 +216,10 @@ Observe(o) ==
 \* Admission carries the block's securing grind in the same batch, as the
 \* implementation's import does.  (Staged locations ahead of admission are
 \* covered by ForkChoice.tla; folding them here keeps the state space small.)
+\* §9.9 header admission: a block whose header breaks one of the two header
+\* validity rules (spec or prevState mismatch with its parent) is weighed
+\* and excluded in the same step, never executed: the exclusion is its own
+\* batch, durable in the same transaction as the block's.
 Admit(o) ==
     /\ o \notin delivered
     /\ o.b \notin weighed[o.ch]
@@ -209,7 +227,10 @@ Admit(o) ==
     /\ loc[o.ch][o.g] \in {None, o.b}
     /\ Record(o)
     /\ weighed' = [weighed EXCEPT ![o.ch] = @ \cup {o.b}]
-    /\ UNCHANGED <<validated, excluded>>
+    /\ excluded' = IF o.b \in HeaderBad
+                      THEN [excluded EXCEPT ![o.ch] = @ \cup {o.b}]
+                      ELSE excluded
+    /\ UNCHANGED validated
 
 CanExecute(ch, b) ==
     /\ b \in weighed[ch] \ (validated[ch] \cup excluded[ch])
@@ -325,6 +346,14 @@ PhysicalWorkOnce ==
         IN  /\ Sum(cs, [c \in cs |-> Cardinality(c.grinds)]) = Cardinality(ids)
             /\ TrueCumWork(ch, b) = Sum(counted, [pg \in counted |-> qty[pg[1]][pg[2]]])
 
+\* §9.9: a header-rule violation is recorded the moment the block is
+\* weighed, and nothing at or below an excluded block is ever executed.
+HeaderExcludedOnAdmission ==
+    \A ch \in Chains : weighed[ch] \cap HeaderBad \subseteq excluded[ch]
+
+NothingValidatedBelowExcluded ==
+    \A ch \in Chains : \A b \in validated[ch] : AncOrSelf(b) \cap excluded[ch] = {}
+
 TipsWellFormed ==
     \A ch \in Chains :
         /\ ValidatedTip(ch) # None =>
@@ -333,6 +362,11 @@ TipsWellFormed ==
                AncOrSelf(CanonicalTip(ch)) \cap excluded[ch] = {}
 
 Quiescent == delivered = Obs /\ ~ENABLED Next
+
+\* Every fact lands: no reachable state is stuck with a fact undelivered.
+\* Without this, a model that can never deliver some fact never becomes
+\* Quiescent, and ExpectedAnswer would hold vacuously.
+NothingStuck == ~ENABLED Next => delivered = Obs
 
 \* Oracle.  ExpectedChildWork is ONE table shared by every model, while
 \* the models differ in the parent's verdicts and body availability, so

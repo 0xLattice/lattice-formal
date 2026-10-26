@@ -19,6 +19,7 @@ jobs:
           - MCHierarchy_ParentBad.cfg
           - MCHierarchy_P1Gap.cfg
           - MCHierarchy_HeldInvalid.cfg
+          - MCHierarchy_HeaderBad.cfg
           - MCHierarchy3_Main.cfg
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +59,10 @@ jobs:
         run: python3 scripts/hierarchy_trace_check.py --selftest traces/hierarchy-434a3be/trace-2.json
       - name: Two-level implementation traces conform to the spec
         run: python3 scripts/hierarchy_trace_check.py traces/hierarchy-434a3be
+      - name: The hierarchy trace checker catches corrupted three-level traces
+        run: python3 scripts/hierarchy_trace_check.py --selftest traces/hierarchy3-8c60c39/trace-10.json
+      - name: Three-level implementation traces with header-rule exclusions conform to the spec
+        run: python3 scripts/hierarchy_trace_check.py traces/hierarchy3-8c60c39
 
   lean:
     runs-on: ubuntu-latest
