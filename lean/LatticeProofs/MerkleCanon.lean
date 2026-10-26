@@ -258,4 +258,269 @@ theorem leaf_canon {c : K} {r : List K} {x : V} :
 theorem leaf_size {p : List K} {x : V} : (leaf p x : Trie K V D).size = 1 := by
   simp [leaf, Trie.size, Kids.size]
 
+
+/-! ## A write on a canonical trie -/
+
+mutual
+theorem Trie.apply_correct (ho : StrictOrder K) (o : Op V) :
+    ∀ (t : Trie K V D) (k : List K) (c0 : K) (r : Option (Trie K V D)),
+      t.Canon → t.HeadIs c0 → k.head? = some c0 → t.apply o k = some r →
+      o.pre (t.lookup k).toOption ∧
+      (∀ k', Trie.lookupOpt r k' = if k' = k then .ofOption o.post else t.lookup k') ∧
+      (Trie.sizeOpt r : Int) = t.size + o.delta ∧
+      (∀ t' ∈ r, t'.Canon ∧ t'.HeadIs c0)
+  | .stub _, _, _, _, hc, _, _, _ => hc.elim
+  | .node pp v ks, k, c0, r, hc, hh, hk, h => by
+    obtain ⟨hpp, hv, hks⟩ := hc
+    have hs := split_holds pp k
+    simp only [Trie.HeadIs] at hh
+    simp only [Trie.apply] at h
+    cases hsp : split pp k with
+    | equal =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs; subst hs
+      simp only [hsp] at h
+      rw [lookup_node_nil (dropPrefix_eq_some.2 (List.append_nil _).symm)]
+      cases o with
+      | insert x =>
+        cases v with
+        | some _ => simp at h
+        | none =>
+          simp only [Option.some.injEq] at h; subst h
+          refine ⟨rfl, fun k' => ?_, ?_, ?_⟩
+          · simp only [Trie.lookupOpt]; rw [lookup_node_val (v := none)]; rfl
+          · simp [Trie.sizeOpt, Trie.size, Op.delta]; omega
+          · intro t' ht'; simp only [Option.mem_def, Option.some.injEq] at ht'; subst ht'
+            exact ⟨⟨hpp, Or.inl (by simp), hks⟩, hh⟩
+      | update x =>
+        cases v with
+        | none => simp at h
+        | some y =>
+          simp only [Option.some.injEq] at h; subst h
+          refine ⟨by simp [Op.pre, Read.ofOption, Read.toOption], fun k' => ?_, ?_, ?_⟩
+          · simp only [Trie.lookupOpt]; rw [lookup_node_val (v := some y)]; rfl
+          · simp [Trie.sizeOpt, Trie.size, Op.delta]
+          · intro t' ht'; simp only [Option.mem_def, Option.some.injEq] at ht'; subst ht'
+            exact ⟨⟨hpp, Or.inl (by simp), hks⟩, hh⟩
+      | delete =>
+        cases v with
+        | none => simp at h
+        | some y =>
+          simp only at h
+          obtain ⟨h1, h2, h3⟩ := collapse_correct hh hks h
+          refine ⟨by simp [Op.pre, Read.ofOption, Read.toOption], fun k' => ?_, ?_, h3⟩
+          · rw [h1, lookup_node_val (v := some y)]; rfl
+          · rw [h2]; simp [Trie.size, Op.delta]; omega
+    | keyLonger c rr =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs; subst hs
+      simp only [hsp] at h
+      rw [lookup_node_cons (dropPrefix_append_self _ _)]
+      cases hd : ks.descend o c rr with
+      | missing =>
+        rw [hd] at h
+        have hn := Kids.descend_missing o hd
+        cases o with
+        | update _ => simp at h
+        | delete => simp at h
+        | insert x =>
+          simp only [Option.some.injEq] at h; subst h
+          refine ⟨by simp [Op.pre, Kids.lookup_not_mem hn, Read.toOption], fun k' => ?_, ?_, ?_⟩
+          · simp only [Trie.lookupOpt]
+            apply lookup_node_kids _ k'
+            intro y z
+            rw [Kids.lookup_ins hn]
+            by_cases hy : c = y
+            · subst hy
+              rw [lookup_leaf, Kids.lookup_not_mem hn]
+              by_cases hz : z = rr
+              · subst hz; simp [Op.post, Read.ofOption]
+              · simp [hz]
+            · simp [hy, Ne.symm hy]
+          · simp [Trie.sizeOpt, Trie.size, Kids.size_ins, leaf_size, Op.delta]; omega
+          · intro t' ht'; simp only [Option.mem_def, Option.some.injEq] at ht'; subst ht'
+            refine ⟨⟨hpp, ?_, Kids.canon_ins ho leaf_canon.2 leaf_canon.1 hks hn⟩, hh⟩
+            rcases hv with hv | hv
+            · exact Or.inl hv
+            · exact Or.inr (by rw [Kids.length_ins]; omega)
+      | fail => rw [hd] at h; simp at h
+      | done ks1 b =>
+        rw [hd] at h
+        obtain ⟨hpre, hlk, hsz, hcan, -, hlen⟩ := Kids.descend_correct ho o ks c rr ks1 b hks hd
+        refine ⟨hpre, ?_⟩
+        simp only at h
+        split at h
+        · next hb =>
+          obtain ⟨rfl, rfl⟩ := hb
+          obtain ⟨h1, h2, h3⟩ := collapse_correct hh hcan h
+          refine ⟨fun k' => ?_, ?_, h3⟩
+          · rw [h1]; exact lookup_node_kids hlk k'
+          · rw [h2]; simp [Trie.size] at hsz ⊢; omega
+        · next hb =>
+          simp only [Option.some.injEq] at h; subst h
+          refine ⟨fun k' => lookup_node_kids hlk k', ?_, ?_⟩
+          · simp [Trie.sizeOpt, Trie.size]; omega
+          · intro t' ht'; simp only [Option.mem_def, Option.some.injEq] at ht'; subst ht'
+            refine ⟨⟨hpp, ?_, hcan⟩, hh⟩
+            cases b with
+            | false => simp at hlen; rw [hlen]; exact hv
+            | true => exact Or.inl (fun e => hb ⟨rfl, e⟩)
+    | keyShorter c rr =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs; subst hs
+      simp only [hsp] at h
+      rw [lookup_node_none (dropPrefix_of_keyShorter rfl)]
+      cases o with
+      | update _ => simp at h
+      | delete => simp at h
+      | insert x =>
+        simp only [Option.some.injEq] at h; subst h
+        refine ⟨rfl, fun k' => ?_, ?_, ?_⟩
+        · simp only [Trie.lookupOpt]
+          rw [lookup_node_append (p := k)]
+          cases hk' : dropPrefix k k' with
+          | none =>
+            have : k' ≠ k := fun e => by subst e; simp [dropPrefix_eq_some.2 (List.append_nil k').symm] at hk'
+            rw [lookup_node_none hk']; simp [this]
+          | some r =>
+            obtain rfl := dropPrefix_eq_some.1 hk'
+            cases r with
+            | nil => rw [lookup_node_nil hk']; simp [Op.post]
+            | cons y z =>
+              rw [lookup_node_cons hk']
+              have hne : ¬ (k ++ y :: z = k) := by simp
+              simp only [Kids.lookup, hne, ite_false]
+              by_cases hy : c = y
+              · subst hy; simp
+              · simp only [hy, ite_false]
+                rw [lookup_node_none (dropPrefix_cons_ne _ _ hy)]
+        · simp [Trie.sizeOpt, Trie.size, Kids.size, Op.delta]; omega
+        · intro t' ht'; simp only [Option.mem_def, Option.some.injEq] at ht'; subst ht'
+          refine ⟨⟨ne_nil_of_head hk, Or.inl (by simp), ⟨rfl, ⟨by simp, hv, hks⟩, trivial,
+            by simp [Kids.keys]⟩⟩, hk⟩
+    | diverge q a ka b pb =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs
+      obtain ⟨rfl, rfl, hab⟩ := hs
+      simp only [hsp] at h
+      rw [lookup_node_none (dropPrefix_of_diverge rfl rfl hab)]
+      have hq : q.head? = some c0 := by
+        cases q with
+        | nil => simp at hk hh; exact absurd (hk.trans hh.symm) hab
+        | cons x q => simpa using hk
+      have hab' : a ∉ (Kids.cons b (Trie.node (b :: pb) v ks) .nil).keys := by
+        simp [Kids.keys, hab]
+      cases o with
+      | update _ => simp at h
+      | delete => simp at h
+      | insert x =>
+        simp only [Option.some.injEq] at h; subst h
+        refine ⟨rfl, fun k' => ?_, ?_, ?_⟩
+        · simp only [Trie.lookupOpt]
+          rw [lookup_node_append (p := q)]
+          cases hk' : dropPrefix q k' with
+          | none =>
+            have : k' ≠ q ++ a :: ka := fun e => by subst e; simp [dropPrefix_append_self] at hk'
+            rw [lookup_node_none hk']; simp [this]
+          | some r =>
+            obtain rfl := dropPrefix_eq_some.1 hk'
+            simp only [List.append_right_inj]
+            cases r with
+            | nil =>
+              rw [lookup_node_nil hk', lookup_node_none (dropPrefix_cons_nil _ _)]; simp [Read.ofOption]
+            | cons y z =>
+              rw [lookup_node_cons hk', Kids.lookup_ins hab']
+              by_cases hy : a = y
+              · subst hy
+                rw [lookup_leaf, lookup_node_none (dropPrefix_cons_ne _ _ (Ne.symm hab))]
+                by_cases hz : z = ka
+                · subst hz; simp [Op.post, Read.ofOption]
+                · simp [hz]
+              · simp only [hy, ite_false, Kids.lookup]
+                have : ¬ (y :: z = a :: ka) := by simp [Ne.symm hy]
+                simp only [this, ite_false]
+                by_cases hy2 : b = y
+                · simp [hy2]
+                · simp only [hy2, ite_false]
+                  rw [lookup_node_none (dropPrefix_cons_ne _ _ hy2)]
+        · simp [Trie.sizeOpt, Trie.size, Kids.size_ins, leaf_size, Kids.size, Op.delta]
+        · intro t' ht'; simp only [Option.mem_def, Option.some.injEq] at ht'; subst ht'
+          refine ⟨⟨ne_nil_of_head hq, Or.inr (by simp [Kids.length_ins, Kids.length]), ?_⟩, hq⟩
+          exact Kids.canon_ins ho leaf_canon.2 leaf_canon.1
+            ⟨rfl, ⟨by simp, hv, hks⟩, trivial, by simp [Kids.keys]⟩ hab'
+
+theorem Kids.descend_correct (ho : StrictOrder K) (o : Op V) :
+    ∀ (ks : Kids K V D) (c : K) (rr : List K) (ks1 : Kids K V D) (b : Bool),
+      ks.Canon → ks.descend o c rr = .done ks1 b →
+      o.pre (ks.lookup c rr).toOption ∧
+      (∀ y z, ks1.lookup y z = if y :: z = c :: rr then .ofOption o.post else ks.lookup y z) ∧
+      (ks1.size : Int) = ks.size + o.delta ∧ ks1.Canon ∧ (∀ x ∈ ks1.keys, x ∈ ks.keys) ∧
+      ks1.length + (if b then 1 else 0) = ks.length
+  | .nil, _, _, _, _, _, h => by simp [Kids.descend] at h
+  | .cons c' t rest, c, rr, ks1, b, hc, h => by
+    simp only [Kids.descend] at h
+    by_cases hcc : c' = c
+    · subst hcc
+      simp only [ite_true] at h
+      have hl : (Kids.cons c' t rest).lookup c' rr = t.lookup (c' :: rr) := by simp [Kids.lookup]
+      have hnm := Kids.Canon.not_mem ho hc
+      cases ha : t.apply o (c' :: rr) with
+      | none => rw [ha] at h; simp at h
+      | some r =>
+        rw [ha] at h
+        obtain ⟨hpre, hlk, hsz, hcan⟩ := Trie.apply_correct ho o t (c' :: rr) c' r hc.2.1 hc.1 rfl ha
+        rw [hl]
+        refine ⟨hpre, ?_⟩
+        cases r with
+        | none =>
+          simp only [Step.done.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+          refine ⟨fun y z => ?_, ?_, hc.2.2.1, by simp [Kids.keys]; intro x hx; exact Or.inr hx,
+            by simp [Kids.length]⟩
+          · simp only [Kids.lookup]
+            by_cases hy : c' = y
+            · subst hy
+              have := hlk (c' :: z)
+              simp only [Trie.lookupOpt] at this
+              rw [Kids.lookup_not_mem hnm, this]
+              simp
+            · have : ¬ (y :: z = c' :: rr) := by simp [Ne.symm hy]
+              simp [hy, this]
+          · simp [Trie.sizeOpt] at hsz; simp [Kids.size]; omega
+        | some t' =>
+          simp only [Step.done.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+          obtain ⟨hc1, hc2⟩ := hcan t' rfl
+          refine ⟨fun y z => ?_, ?_, ⟨hc2, hc1, hc.2.2.1, hc.2.2.2⟩, fun x hx => hx,
+            by simp [Kids.length]⟩
+          · simp only [Kids.lookup]
+            by_cases hy : c' = y
+            · subst hy
+              have := hlk (c' :: z)
+              simp only [Trie.lookupOpt] at this
+              rw [this]; simp
+            · have : ¬ (y :: z = c' :: rr) := by simp [Ne.symm hy]
+              simp [hy, this]
+          · simp [Trie.sizeOpt] at hsz; simp [Kids.size]; omega
+    · simp only [hcc, ite_false] at h
+      cases hr : rest.descend o c rr with
+      | missing => rw [hr] at h; simp at h
+      | fail => rw [hr] at h; simp at h
+      | done ks2 b2 =>
+        rw [hr] at h
+        simp only [Step.done.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+        obtain ⟨hpre, hlk, hsz, hcan, hkeys, hlen⟩ :=
+          Kids.descend_correct ho o rest c rr ks2 b2 hc.2.2.1 hr
+        have hl : (Kids.cons c' t rest).lookup c rr = rest.lookup c rr := by simp [Kids.lookup, hcc]
+        rw [hl]
+        refine ⟨hpre, fun y z => ?_, ?_, ⟨hc.1, hc.2.1, hcan, fun x hx => hc.2.2.2 x (hkeys x hx)⟩,
+          ?_, ?_⟩
+        · simp only [Kids.lookup]
+          by_cases hy : c' = y
+          · subst hy
+            have : ¬ (c' :: z = c :: rr) := by simp [hcc]
+            simp [this]
+          · simp [hy, hlk]
+        · simp [Kids.size]; omega
+        · simp only [Kids.keys, List.mem_cons]
+          rintro x (rfl | hx)
+          · exact Or.inl rfl
+          · exact Or.inr (hkeys x hx)
+        · simp [Kids.length] at hlen ⊢; omega
+end
+
 end Lattice.Merkle
