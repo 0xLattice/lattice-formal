@@ -12,7 +12,7 @@
 (***************************************************************************)
 EXTENDS Hierarchy, Sequences
 
-CONSTANT Trace   \* Seq of [kind, ch, block, grind, qty, accepted, reason, after]
+CONSTANT Trace   \* Seq of [kind, ch, block, grind, qty, accepted, reason, cause, after]
 
 VARIABLE i       \* next event to replay
 
@@ -23,12 +23,20 @@ ObsOf(e) == [ch |-> e.ch, g |-> e.grind, b |-> e.block, q |-> e.qty]
 \* A repeated observation is a no-op in the spec.
 ObserveAgain(o) == IF o \in delivered THEN UNCHANGED vars ELSE Observe(o)
 
+\* A child exclusion names its cause: a failed transition, which is a
+\* verdict first (§5.3), else an invalid anchor.
+CauseMatches(e) ==
+    e.ch # "P" =>
+        e.cause = IF ~Valid[e.block] THEN "transition" ELSE "continuity"
+
 Replay(e) ==
     CASE e.kind = "admit" ->
            IF e.accepted THEN Admit(ObsOf(e))
            ELSE ~ENABLED Admit(ObsOf(e)) /\ UNCHANGED vars
       [] e.kind = "observe" ->
-           \* Accepted exactly when the spec's state changes.
+           \* Accepted exactly when the spec's state changes; refused as
+           \* located elsewhere exactly when the spec holds it elsewhere.
+           /\ e.reason = "grindElsewhere" <=> loc[e.ch][e.grind] \notin {None, e.block}
            /\ ObserveAgain(ObsOf(e))
            /\ e.accepted = (<<loc', qty'>> # <<loc, qty>>)
       [] e.kind = "validate" ->
@@ -40,8 +48,16 @@ Replay(e) ==
                      /\ UNCHANGED vars
                 ELSE ~ENABLED ValidateOk(e.ch, e.block) /\ UNCHANGED vars
       [] e.kind = "exclude" ->
-           IF e.accepted THEN Exclude(e.ch, e.block)
-           ELSE ~ENABLED Exclude(e.ch, e.block) /\ UNCHANGED vars
+           /\ CauseMatches(e)
+           /\ IF e.accepted THEN Exclude(e.ch, e.block)
+              ELSE IF e.reason = "rootExclusion"
+                \* An invalid root kept because no other root executed.
+                THEN /\ CanExecute(e.ch, e.block)
+                     /\ Verdict(e.ch, e.block) = "invalid"
+                     /\ e.block \in Roots(e.ch)
+                     /\ \A r \in Roots(e.ch) \ {e.block} : r \notin validated[e.ch]
+                     /\ UNCHANGED vars
+                ELSE ~ENABLED Exclude(e.ch, e.block) /\ UNCHANGED vars
 
 TraceInit == Init /\ i = 1
 

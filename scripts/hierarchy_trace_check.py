@@ -46,6 +46,7 @@ def model(t):
             "qty": tla(e.get("qty", 0)),
             "accepted": tla(e["accepted"]),
             "reason": tla(e.get("reason") or ""),
+            "cause": tla(e.get("cause") or ""),
             "after": "[P |-> {}, C |-> {}]".format(
                 side("P"), side("C", f", continuity |-> {fn(a['C']['continuity'])}")),
         }
@@ -123,7 +124,7 @@ def check(path):
 
 
 def selftest(path):
-    """Corrupt a passing trace four ways; each must be caught."""
+    """Corrupt a passing trace six ways; each must be caught."""
     base = json.loads(path.read_text())
     ok, line = check(path)
     if not ok:
@@ -146,9 +147,18 @@ def selftest(path):
         e = next(e for e in t["events"] if e.get("reason") == "continuity")
         e["accepted"], e["reason"] = True, None
         return "not a spec step"
+    def wrong_cause(t):
+        e = next(e for e in t["events"] if e["kind"] == "exclude" and e.get("cause"))
+        e["cause"] = "continuity" if e["cause"] == "transition" else "transition"
+        return "not a spec step"
+    def elsewhere_unreported(t):
+        e = next(e for e in t["events"] if e.get("reason") == "grindElsewhere")
+        e["reason"] = None
+        return "not a spec step"
     results, ok = [], True
     with tempfile.TemporaryDirectory() as d:
-        for corrupt in (child_weight, continuity, child_tip, held_as_accepted):
+        for corrupt in (child_weight, continuity, child_tip, held_as_accepted,
+                        wrong_cause, elsewhere_unreported):
             t = copy.deepcopy(base)
             expect = corrupt(t)
             q = pathlib.Path(d) / f"trace-{corrupt.__name__}.json"
