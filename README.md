@@ -60,17 +60,23 @@ at a time and requires the named property to go red:
 | execute a block whose parent is not validated | `NothingValidatedBelowExcluded` |
 | canonical descent steps into excluded blocks | `TipsWellFormed` |
 | exact tie breaks to the larger CID | `ExpectedAnswer` |
-| a grind observed at two locations (`MCProbeConflict.cfg`) | `Convergence` |
+| a grind observed at two locations, which needs a SHA-256 collision (`MCProbeConflict.cfg`) | `Convergence` |
 
-### Finding: convergence rests on unique grind location
+### Convergence rests on unique grind location
 
-The last row is an assumption probe, not a code change. If one grind can be
+The last row is an assumption probe, not a code change. If one grind could be
 observed at two blocks of the same chain, the "first location wins, conflict
-rejected" rule (§9.1) makes the outcome depend on arrival order, and nodes
-diverge. Convergence therefore depends on the claim that a root's sparse
-directory path resolves to exactly one terminal per chain (§9.5). That claim
-lives in proof verification (cashew paths and `ChildBlockProof`), outside this
-model, and is the next thing worth proving.
+rejected" rule (§9.1) would make the outcome depend on arrival order, and
+nodes would diverge.
+
+That cannot happen short of a SHA-256 collision. The root's bytes commit to
+its `children` CID. `children` is one DAG-CBOR map with one CID per directory
+(§3.1), and a chain is identified by its full path (§4.1). So a root has one
+path to a given chain, and every hop is bound by a standard CIDv1 dag-cbor
+sha256 link. Two terminals would need one CID to resolve to two contents.
+The guarantee also needs strict decoding: a decoder that accepted duplicate
+map keys would allow two children under one CID with no collision, so
+canonical DAG-CBOR's duplicate-key rejection is part of the assumption.
 
 ### Abstractions and limits
 
@@ -100,5 +106,5 @@ model, and is the next thing worth proving.
 2. **Trace validation:** record fact streams from lattice-node's deterministic
    tests and simulator, then check each trace is a behaviour of these specs.
    This is the link from model to Swift code.
-3. **Proofs:** Lean for the unique-location claim and for cross-chain value
-   conservation (§8.2, §12.2, §12.4).
+3. **Proofs:** Lean for cross-chain value conservation (§8.2, §12.2,
+   §12.4).
