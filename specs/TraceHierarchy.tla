@@ -1,18 +1,21 @@
 --------------------------- MODULE TraceHierarchy ---------------------------
 (***************************************************************************)
-(* Trace validation for two levels: replay events recorded from Lattice's  *)
-(* parent and child ChainTrees through Hierarchy, one event per step.      *)
+(* Trace validation for two or three levels: replay events recorded from  *)
+(* Lattice's ChainTrees (P, C and, in three-level traces, G) through       *)
+(* Hierarchy, one event per step.                                          *)
 (*                                                                         *)
 (* - Each event must be a spec step with the same accept/refuse; a child   *)
 (*   validation refused for continuity must be one the spec holds.  If an  *)
 (*   event is not a step, TLC reports a deadlock at it.                    *)
-(* - After each event, on both chains, the canonical tip, act-on tip and   *)
+(* - An admission the implementation excluded under a header rule must be *)
+(*   one the spec excludes on admission, and no other.                     *)
+(* - After each event, on every chain, the canonical tip, act-on tip and   *)
 (*   every held block's weight (attributed runs included) must equal the   *)
-(*   spec's, and so must every held child block's continuity.             *)
+(*   spec's, and so must every held lower block's continuity.             *)
 (***************************************************************************)
 EXTENDS Hierarchy, Sequences
 
-CONSTANT Trace   \* Seq of [kind, ch, block, grind, qty, accepted, reason, cause, after]
+CONSTANT Trace   \* Seq of [kind, ch, block, grind, qty, accepted, reason, cause, headerExcluded, after]
 
 VARIABLE i       \* next event to replay
 
@@ -31,7 +34,8 @@ CauseMatches(e) ==
 
 Replay(e) ==
     CASE e.kind = "admit" ->
-           IF e.accepted THEN Admit(ObsOf(e))
+           IF e.accepted THEN /\ e.headerExcluded = (e.block \in HeaderBad)
+                              /\ Admit(ObsOf(e))
            ELSE ~ENABLED Admit(ObsOf(e)) /\ UNCHANGED vars
       [] e.kind = "observe" ->
            \* Accepted exactly when the spec's state changes; refused as
@@ -86,7 +90,8 @@ WeightsMatch ==
             /\ \A b \in weighed[ch] : TrueCumWork(ch, b) = After[ch].weights[b]
 ContinuityMatches ==
     i > 1 =>
-        /\ DOMAIN After["C"].continuity = weighed["C"]
-        /\ \A b \in weighed["C"] : Continuity(b) = After["C"].continuity[b]
+        \A ch \in LowerChains :
+            /\ DOMAIN After[ch].continuity = weighed[ch]
+            /\ \A b \in weighed[ch] : Continuity(b) = After[ch].continuity[b]
 
 =============================================================================

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Check two-level implementation traces against the hierarchy spec.
+"""Check two- and three-level implementation traces against the hierarchy spec.
 
     scripts/hierarchy_trace_check.py <trace-dir-or-files...>
     scripts/hierarchy_trace_check.py --selftest <passing-trace.json>
 
 Each trace-<seed>.json (Lattice's HierarchyTraceExportTests) becomes a TLA+
 model of TraceHierarchy, checked by TLC. A trace passes when every event is a
-step of the spec with the same accept/refuse, and after every event, on both
-chains, the tips, weights and child continuity equal the spec's.
+step of the spec with the same accept/refuse, reason and header exclusion, and
+after every event, on every chain, the tips, weights and continuity equal the
+spec's. A two-level trace has no "G" chain; the grandchild then holds nothing.
 """
 import copy
 import json
@@ -28,16 +29,19 @@ def model(t):
     chains = t["chains"]
     p_blocks = [b["label"] for b in chains["P"]["blocks"]]
     c_blocks = [b["label"] for b in chains["C"]["blocks"]]
-    blocks = chains["P"]["blocks"] + chains["C"]["blocks"]
+    g_blocks = [b["label"] for b in chains.get("G", {"blocks": []})["blocks"]]
+    blocks = chains["P"]["blocks"] + chains["C"]["blocks"] + chains.get("G", {"blocks": []})["blocks"]
     grinds = sorted({g["label"] for g in t["grinds"]} | {e["grind"] for e in t["events"] if "grind" in e})
     events = []
     for e in t["events"]:
         a = e["after"]
-        def side(ch, extra=""):
-            s = a[ch]
+        empty = {"canonicalTip": None, "validatedTip": None, "weights": {}, "continuity": {}}
+        def side(ch, lower=True):
+            s = a.get(ch, empty)
             return "[canonicalTip |-> {}, validatedTip |-> {}, weights |-> {}{}]".format(
                 tla(s["canonicalTip"]), tla(s["validatedTip"]),
-                fn({b: int(w) for b, w in s["weights"].items()}), extra)
+                fn({b: int(w) for b, w in s["weights"].items()}),
+                f", continuity |-> {fn(s['continuity'])}" if lower else "")
         rec = {
             "kind": tla(e["kind"]),
             "ch": tla(e["ch"]),
@@ -47,9 +51,8 @@ def model(t):
             "accepted": tla(e["accepted"]),
             "reason": tla(e.get("reason") or ""),
             "cause": tla(e.get("cause") or ""),
-            # Two-level traces: the grandchild chain holds nothing.
-            "after": "[P |-> {}, C |-> {}, G |-> [canonicalTip |-> \"{}\", validatedTip |-> \"{}\", weights |-> {}]]".format(
-                side("P"), side("C", f", continuity |-> {fn(a['C']['continuity'])}"), NONE, NONE, fn({})),
+            "headerExcluded": tla(bool(e.get("headerExcluded"))),
+            "after": "[P |-> {}, C |-> {}, G |-> {}]".format(side("P", lower=False), side("C"), side("G")),
         }
         events.append("[" + ", ".join(f"{k} |-> {v}" for k, v in rec.items()) + "]")
     obs = ", ".join(f"[ch |-> {tla(g['ch'])}, g |-> {tla(g['label'])}, b |-> {tla(g['block'])}, q |-> {g['qty']}]"
@@ -60,14 +63,16 @@ def model(t):
 EXTENDS TraceHierarchy, TLC
 TPBlocks == {{{", ".join(tla(x) for x in p_blocks)}}}
 TCBlocks == {{{", ".join(tla(x) for x in c_blocks)}}}
-TGBlocks == {{}}
+TGBlocks == {{{", ".join(tla(x) for x in g_blocks)}}}
 TParent == {fn({b["label"]: b["parent"] for b in blocks})}
+TPrevState == {fn({b["label"]: b.get("prevStateBlock", b["parent"]) for b in blocks})}
 TCidRank == {fn({b["label"]: b["cidRank"] for b in blocks})}
 TGrinds == {{{", ".join(tla(g) for g in grinds)}}}
 TObs == {{{obs}}}
 TCommits == {{{commits}}}
 TAnchor == {fn(t["anchor"])}
 TValid == {fn({b["label"]: b["valid"] for b in blocks})}
+THeaderBad == {{{", ".join(tla(b["label"]) for b in blocks if b.get("headerBad"))}}}
 TAvailable == {{{", ".join(tla(b["label"]) for b in blocks if not b.get("withheld"))}}}
 TTips == [ch \\in {{"P", "C", "G"}} |-> [canonical |-> "{NONE}", validated |-> "{NONE}"]]
 TChildWork == [x \\in TCBlocks |-> 0]
@@ -86,12 +91,14 @@ CONSTANTS
     CBlocks <- TCBlocks
     GBlocks <- TGBlocks
     Parent <- TParent
+    PrevState <- TPrevState
     CidRank <- TCidRank
     Grinds <- TGrinds
     Obs <- TObs
     Commits <- TCommits
     Anchor <- TAnchor
     Valid <- TValid
+    HeaderBad <- THeaderBad
     Available <- TAvailable
     ExpectedTips <- TTips
     ExpectedChildWork <- TChildWork
@@ -127,7 +134,8 @@ def check(path):
 
 
 def selftest(path):
-    """Corrupt a passing trace six ways; each must be caught."""
+    """Corrupt a passing trace; each corruption must be caught.  Six apply to
+    every trace; three more apply to three-level traces."""
     base = json.loads(path.read_text())
     ok, line = check(path)
     if not ok:
@@ -158,12 +166,35 @@ def selftest(path):
         e = next(e for e in t["events"] if e.get("reason") == "grindElsewhere")
         e["reason"] = None
         return "not a spec step"
+    def grandchild_weight(t):
+        e = next((e for e in t["events"] if e["after"].get("G", {}).get("weights")), None)
+        if e is None:
+            return None
+        b = next(iter(e["after"]["G"]["weights"]))
+        e["after"]["G"]["weights"][b] = str(int(e["after"]["G"]["weights"][b]) + 1)
+        return "WeightsMatch"
+    def grandchild_continuity(t):
+        e = next((e for e in t["events"] if "held" in e["after"].get("G", {}).get("continuity", {}).values()), None)
+        if e is None:
+            return None
+        b = next(k for k, v in e["after"]["G"]["continuity"].items() if v == "held")
+        e["after"]["G"]["continuity"][b] = "proven"
+        return "ContinuityMatches"
+    def header_exclusion_unreported(t):
+        e = next((e for e in t["events"] if e.get("headerExcluded")), None)
+        if e is None:
+            return None
+        e["headerExcluded"] = False
+        return "not a spec step"
     results, ok = [], True
     with tempfile.TemporaryDirectory() as d:
         for corrupt in (child_weight, continuity, child_tip, held_as_accepted,
-                        wrong_cause, elsewhere_unreported):
+                        wrong_cause, elsewhere_unreported,
+                        grandchild_weight, grandchild_continuity, header_exclusion_unreported):
             t = copy.deepcopy(base)
             expect = corrupt(t)
+            if expect is None:
+                continue
             q = pathlib.Path(d) / f"trace-{corrupt.__name__}.json"
             q.write_text(json.dumps(t))
             passed, line = check(q)

@@ -70,6 +70,12 @@ MUTANTS = [
      r"""    IF Parent[q] = None THEN None
     ELSE IF Commits1(ch, Parent[q]) THEN Parent[q]"""),
 
+    ("header-exclusion-waits-for-execution", "HeaderExcludedOnAdmission", "MCHierarchy_HeaderBad.cfg", "Hierarchy.tla",
+     """    /\\ excluded' = IF o.b \\in HeaderBad""", """    /\\ excluded' = IF FALSE"""),
+    ("header-violation-dropped-not-weighed", "NothingStuck", "MCHierarchy_HeaderBad.cfg", "Hierarchy.tla",
+     "    /\\ weighed' = [weighed EXCEPT ![o.ch] = @ \\cup {o.b}]\n    /\\ excluded' = IF o.b \\in HeaderBad",
+     "    /\\ weighed' = IF o.b \\in HeaderBad THEN weighed ELSE [weighed EXCEPT ![o.ch] = @ \\cup {o.b}]\n    /\\ excluded' = IF FALSE"),
+
     # Three levels (MCHierarchy3): caught only with a grandchild.
     ("runs-drop-attributed-work", "ExpectedAnswer", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
      '    + IF ch = "P" THEN 0\n', '    + IF TRUE THEN 0\n'),

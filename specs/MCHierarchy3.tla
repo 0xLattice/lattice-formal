@@ -77,6 +77,8 @@ M3ExpectedWork == [x \in M3CBlocks \cup M3GBlocks |->
                 CASE x = "c0" -> 9 [] x = "c1" -> 8 [] x = "c2" -> 4
                   [] x = "g0" -> 10 [] x = "g1" -> 1]
 
+M3HeaderNone == {}
+
 M3ValidAll == [x \in M3All |-> TRUE]
 M3Tips ==
     [P |-> [canonical |-> "p4", validated |-> "p4"],

@@ -208,6 +208,11 @@ AgreeWhenValidated ==
 \* A node is quiescent once it has every fact and nothing more can happen.
 Quiescent(n) == delivered[n] = Obs /\ ~ENABLED NodeNext(n)
 
+\* Every fact lands: no node is stuck with a fact undelivered, so
+\* Convergence and ExpectedAnswer, which speak of quiescent nodes, are
+\* never vacuous.
+NothingStuck == \A n \in Nodes : ~ENABLED NodeNext(n) => delivered[n] = Obs
+
 \* Convergence: nodes holding the same facts derive the same weights and
 \* select the same tips, whatever order the facts arrived in (§9.4; §9.8:
 \* replay "reconstructs exact measures").  Weights are compared directly: a

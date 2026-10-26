@@ -39,6 +39,7 @@ Each derives the canonical tip (heaviest selectable path) and the validated tip
 | `VerdictsSound`, `VerdictsPermanent`: an executed block is never excluded; verdicts never retract | invariant, action | §9.9 |
 | `AgreeWhenValidated`: once the canonical path is validated, the node acts on the canonical tip | invariant | §9.9 |
 | `CatchesUp`: with every body obtainable, the validated tip eventually reaches the canonical tip for good | liveness | §9.9 |
+| `NothingStuck`: no node is stuck with a fact undelivered, so the quiescent-node properties are never vacuous | invariant | §9.9 |
 | `ExpectedAnswer`: quiescent tips equal hand-computed answers | oracle | §9.4 tie-break, §9.9 |
 
 Models (`specs/MC.tla`) share one five-block tree that exercises every rule:
@@ -125,10 +126,12 @@ check, so one node is enough here.
 | `AnchoredAtExecuted`: a validated child block is anchored at a state the parent's executed frontier produced; a child genesis never at empty | invariant | §5.1 rule 4, §5.3 step 6, §9.5 |
 | `AnchorsAdvance`: along validated child history, anchors never move back to empty or sideways | invariant | §5.3 step 6, §12.5.8 |
 | `WorkMonotone`: no step lowers any block's weight on either chain, attributed runs included | action | §9.10 "only ever raised" |
+| `HeaderExcludedOnAdmission`: a block breaking a header validity rule is excluded the moment it is weighed; `NothingValidatedBelowExcluded` | invariant | §9.9 |
 | `TipsWellFormed`, `VerdictsPermanent` | invariant, action | §9.9 |
+| `NothingStuck`: no reachable state is stuck with a fact undelivered, so `ExpectedAnswer` is never vacuous | invariant | §9.9 header admission |
 | `ExpectedAnswer`: quiescent tips equal hand-computed answers, and child weights equal ONE table shared by every model | oracle | §9.10, §12.5.7 |
 
-The four two-level models differ only in the parent's verdicts and body availability,
+The five two-level models differ only in verdicts, header-rule violations and body availability,
 and must all produce the same child weights. That is §12.5.7, that parent
 canonicity alone cannot change child weight, and §9.10's "independent of
 exclusion and of parent canonicity".
@@ -139,6 +142,7 @@ exclusion and of parent canonicity".
 | `MCHierarchy_ParentBad.cfg` | `p2` and `p4` are invalid, so the parent's canonical tip moves to `p3`. The child block anchored at the excluded `p2` is held, not excluded, and `p4` still counts in its carrier's run; nothing in the child moves |
 | `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling branch |
 | `MCHierarchy_HeldInvalid.cfg` | `c3`'s anchor is sideways (continuity held) and its transition is invalid: `c3` is excluded, not held, so the child's canonical tip moves to `c1` |
+| `MCHierarchy_HeaderBad.cfg` | `p3` (the carrier of `c1`) and `c3` break a header validity rule (§9.9: `spec` or `prevState` mismatch), so each is excluded the moment it is weighed. `p3` and its descendant still weigh and its run still credits `c1`; `c3` is excluded rather than held, so the child's canonical tip moves to `c1` |
 | `MCHierarchy3_Main.cfg` | three levels: the run P attributes at a C carrier is credited work in that carrier's own run, so it reaches G (§9.10 "level by level"); P attributes both at the carrier and at a non-carrier member of its run; one grind is merged across all three levels, with a different quantity at each, and counted once at each |
 
 The shared scenario also covers:
@@ -168,6 +172,8 @@ by `ForkChoice.tla`.
 | continuity allows a sideways anchor | Main | `AnchorsAdvance` |
 | a child genesis may anchor at empty | Main | `AnchoredAtExecuted` |
 | continuity is decided before the transition (a held anchor hides a failed transition) | HeldInvalid | `ExpectedAnswer` |
+| a header-rule violation is excluded only once executed | HeaderBad | `HeaderExcludedOnAdmission` |
+| a header-rule violation is dropped instead of weighed (its descendants can then never land) | HeaderBad | `NothingStuck` |
 | runs sum grinds only, dropping attributed work, so nothing recurses (identical to the spec at two levels) | Hierarchy3 | `ExpectedAnswer` |
 | a run credits attributed work only at its carrier, not at its other members | Hierarchy3 | `PhysicalWorkOnce` |
 | a grandchild's attributed run also counts the child carrier's own grind | Hierarchy3 | `PhysicalWorkOnce` |
@@ -188,9 +194,10 @@ by `ForkChoice.tla`.
 - **An anchor at an excluded parent block** is never proven, so the child
   block stays held forever rather than being excluded (§9.9: an excluded
   block is "never treated as invalid by any peer on that account").
-- **Header-rule exclusions** (§9.9: `spec` or `prevState` mismatch, recorded
-  the moment a block is weighed) are not modelled; exclusion here always
-  follows execution.
+- **Header-rule exclusions** (§9.9: `spec` or `prevState` mismatch) are
+  recorded in the same step that weighs the block. The implementation writes
+  them as a separate batch in the same transaction, so no state in between
+  is ever durable.
 - **"Equality is never evidence" is unfalsifiable here**: a child block
   executes only after its predecessor validated, so an equal anchor was
   already proven. The hazard lives in implementations that act on weighed
@@ -286,6 +293,44 @@ exclusion's cause, and an unreported grind-elsewhere refusal, and requires
 each to be caught. The traces also fail against planted bugs in the model:
 with no run attribution 12 of 20 fail, and with sideways anchors allowed 12
 of 20 fail.
+
+### Three levels and header rules
+
+Lattice PR #38 extends the exporter to three chains, P → C → G, and to the
+§9.9 header rules. Each generated block's header is classified by the real
+`Block.headerAdmission`: a block whose `spec` or `prevState` differs from its
+parent's is weighed and excluded in one step, as `insertHeader` applies it.
+Grandchild continuity is decided by `validateParentFacts` over the live C
+tree, and attributed runs are re-derived parents first, as the node does, so
+a run P attributes at a C block reaches G through C's runs. The replay
+compares every chain, both lower chains' continuity, and each admission's
+header-exclusion flag. Each block's declared prevState is part of the trace,
+because a carrier breaking the prevState rule anchors its committed child at
+the state it declared, not at its parent's (`PrevState` in `Hierarchy.tla`).
+
+```sh
+scripts/hierarchy_trace_check.py traces/hierarchy3-8c60c39
+scripts/hierarchy_trace_check.py --selftest traces/hierarchy3-8c60c39/trace-10.json
+```
+
+`traces/hierarchy3-8c60c39/` holds 20 traces (Lattice PR #38 at `8c60c39`),
+2,400 events:
+
+| Recorded | P | C | G |
+|---|---|---|---|
+| blocks | 127 | 131 | 132 |
+| header-rule violations (`spec` / `prevState`) | 17 / 12 | 12 / 12 | 1 / 8 |
+| carriers breaking a header rule | 19 | 20 | – |
+
+There are 65 P → C and 61 C → G commits, and 59 header-excluded admissions.
+Merged grinds lie on every proof path: P–C–G 7, P–C 18, C–G 16, P–G 6. In 6
+traces a G block's attributed run carries work P attributed into C.
+
+All conform. The self-test adds three corruptions for three-level traces: a
+grandchild weight, a grandchild continuity answer, and a header exclusion
+reported as an ordinary admission. Planted bugs in the model fail the
+traces: runs that drop attributed work, so nothing recurses, fail 6 of 20,
+and a header exclusion recorded only after execution fails all 20.
 
 ## Value conservation (`lean/`)
 
@@ -404,6 +449,4 @@ proven sub-state).
 
 ## Roadmap
 
-1. **Header-rule exclusions** (§9.9) in `Hierarchy.tla`, and three-level
-   implementation traces.
-2. **Lean:** Merkle proof semantics.
+1. **Lean:** Merkle proof semantics.
