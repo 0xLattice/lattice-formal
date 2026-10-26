@@ -47,6 +47,7 @@ ChainBlocks(ch) == CASE ch = "P" -> PBlocks [] ch = "C" -> CBlocks [] OTHER -> G
 ChainOf(b) == CHOOSE ch \in Chains : b \in ChainBlocks(ch)
 
 ASSUME /\ None \notin Blocks
+       /\ HeaderBad \subseteq Blocks
        \* §9.9: roots enter only as genesis blocks, never from a header.
        /\ \A b \in HeaderBad : Parent[b] # None
        \* A block's declared prevState names a state of its own chain (a

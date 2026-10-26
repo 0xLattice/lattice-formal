@@ -39,7 +39,6 @@ Each derives the canonical tip (heaviest selectable path) and the validated tip
 | `VerdictsSound`, `VerdictsPermanent`: an executed block is never excluded; verdicts never retract | invariant, action | §9.9 |
 | `AgreeWhenValidated`: once the canonical path is validated, the node acts on the canonical tip | invariant | §9.9 |
 | `CatchesUp`: with every body obtainable, the validated tip eventually reaches the canonical tip for good | liveness | §9.9 |
-| `NothingStuck`: no node is stuck with a fact undelivered, so the quiescent-node properties are never vacuous | invariant | §9.9 |
 | `ExpectedAnswer`: quiescent tips equal hand-computed answers | oracle | §9.4 tie-break, §9.9 |
 
 Models (`specs/MC.tla`) share one five-block tree that exercises every rule:
@@ -128,7 +127,7 @@ check, so one node is enough here.
 | `WorkMonotone`: no step lowers any block's weight on either chain, attributed runs included | action | §9.10 "only ever raised" |
 | `HeaderExcludedOnAdmission`: a block breaking a header validity rule is excluded the moment it is weighed; `NothingValidatedBelowExcluded` | invariant | §9.9 |
 | `TipsWellFormed`, `VerdictsPermanent` | invariant, action | §9.9 |
-| `NothingStuck`: no reachable state is stuck with a fact undelivered, so `ExpectedAnswer` is never vacuous | invariant | §9.9 header admission |
+| `NothingStuck` (Hierarchy only, where `Admit` is gated; in ForkChoice every undelivered fact can always be observed): no reachable state is stuck with a fact undelivered, so `ExpectedAnswer` is never vacuous | invariant | §9.9 header admission |
 | `ExpectedAnswer`: quiescent tips equal hand-computed answers, and child weights equal ONE table shared by every model | oracle | §9.10, §12.5.7 |
 
 The five two-level models differ only in verdicts, header-rule violations and body availability,
@@ -195,9 +194,9 @@ by `ForkChoice.tla`.
   block stays held forever rather than being excluded (§9.9: an excluded
   block is "never treated as invalid by any peer on that account").
 - **Header-rule exclusions** (§9.9: `spec` or `prevState` mismatch) are
-  recorded in the same step that weighs the block. The implementation writes
-  them as a separate batch in the same transaction, so no state in between
-  is ever durable.
+  recorded in the same step that weighs the block. `ChainTree.insertHeader`
+  applies the block, its work and the exclusion as one admission, all or
+  nothing.
 - **"Equality is never evidence" is unfalsifiable here**: a child block
   executes only after its predecessor validated, so an equal anchor was
   already proven. The hazard lives in implementations that act on weighed
@@ -299,7 +298,10 @@ of 20 fail.
 Lattice PR #38 extends the exporter to three chains, P → C → G, and to the
 §9.9 header rules. Each generated block's header is classified by the real
 `Block.headerAdmission`: a block whose `spec` or `prevState` differs from its
-parent's is weighed and excluded in one step, as `insertHeader` applies it.
+parent's is weighed and excluded in one step. Since Lattice PR #42 every
+admission goes through the real `ChainTree.insertHeader`, and the trace's
+header-exclusion flag is read back from the tree afterwards, not from the
+harness (the traces were byte-identical before and after that change).
 Grandchild continuity is decided by `validateParentFacts` over the live C
 tree, and attributed runs are re-derived parents first, as the node does, so
 a run P attributes at a C block reaches G through C's runs. The replay
