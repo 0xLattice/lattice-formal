@@ -44,6 +44,89 @@ theorem digests_nil_inv {ks' : Kids K V D} (hd : (Kids.nil : Kids K V D).digests
 
 variable [DecidableEq K]
 
+/-! ## Prefixes -/
+
+theorem dropPrefix_eq_some : ∀ {p k r : List K}, dropPrefix p k = some r ↔ k = p ++ r
+  | [], k, r => by simp [dropPrefix]
+  | b :: p, [], r => by simp [dropPrefix]
+  | b :: p, a :: k, r => by
+    simp only [dropPrefix, List.cons_append, List.cons.injEq]
+    by_cases h : b = a
+    · subst h; simp [dropPrefix_eq_some]
+    · simp [h, Ne.symm h]
+
+theorem dropPrefix_append_self (p r : List K) : dropPrefix p (p ++ r) = some r :=
+  dropPrefix_eq_some.2 rfl
+
+theorem dropPrefix_append (p p' k : List K) :
+    dropPrefix (p ++ p') k = (dropPrefix p k).bind (dropPrefix p') := by
+  cases h : dropPrefix p k with
+  | none =>
+    simp only [Option.bind_none]
+    apply Option.eq_none_iff_forall_ne_some.2
+    intro r hr
+    rw [dropPrefix_eq_some, List.append_assoc] at hr
+    rw [Option.eq_none_iff_forall_ne_some] at h
+    exact h _ (dropPrefix_eq_some.2 hr)
+  | some k2 =>
+    simp only [Option.bind_some]
+    obtain rfl := dropPrefix_eq_some.1 h
+    cases h2 : dropPrefix p' k2 with
+    | none =>
+      apply Option.eq_none_iff_forall_ne_some.2
+      intro r hr
+      rw [dropPrefix_eq_some, List.append_assoc, List.append_right_inj] at hr
+      rw [Option.eq_none_iff_forall_ne_some] at h2
+      exact h2 _ (dropPrefix_eq_some.2 hr)
+    | some r =>
+      obtain rfl := dropPrefix_eq_some.1 h2
+      rw [← List.append_assoc]; exact dropPrefix_append_self _ _
+
+theorem dropPrefix_cons_ne {c a : K} (r k : List K) (h : c ≠ a) :
+    dropPrefix (c :: r) (a :: k) = none := by
+  simp [dropPrefix, h]
+
+theorem dropPrefix_cons_nil (c : K) (r : List K) : dropPrefix (c :: r) [] = none := rfl
+
+/-- What `split p k` says about `p` and `k`. -/
+def Split.Holds (p k : List K) : Split K → Prop
+  | .equal => k = p
+  | .keyLonger c r => k = p ++ c :: r
+  | .keyShorter c r => p = k ++ c :: r
+  | .diverge q a ka b pb => k = q ++ a :: ka ∧ p = q ++ b :: pb ∧ a ≠ b
+
+theorem split_holds : ∀ p k : List K, (split p k).Holds p k
+  | [], [] => rfl
+  | [], c :: r => rfl
+  | c :: r, [] => rfl
+  | b :: pb, a :: ka => by
+    simp only [split]
+    by_cases h : a = b
+    · subst h
+      simp only [ite_true]
+      have ih := split_holds pb ka
+      revert ih
+      cases split pb ka <;> simp_all [Split.cons, Split.Holds]
+    · simp [h, Split.Holds]
+
+theorem dropPrefix_of_keyShorter {p k r : List K} {c : K} (h : p = k ++ c :: r) :
+    dropPrefix p k = none := by
+  apply Option.eq_none_iff_forall_ne_some.2
+  intro r' hr
+  have := congrArg List.length (dropPrefix_eq_some.1 hr)
+  subst h
+  simp at this
+
+theorem dropPrefix_of_diverge {p k q ka pb : List K} {a b : K}
+    (hk : k = q ++ a :: ka) (hp : p = q ++ b :: pb) (hab : a ≠ b) : dropPrefix p k = none := by
+  apply Option.eq_none_iff_forall_ne_some.2
+  intro r' hr
+  have := dropPrefix_eq_some.1 hr
+  subst hk hp
+  rw [List.append_assoc, List.append_right_inj] at this
+  simp at this
+  exact hab this.1
+
 mutual
 theorem Trie.lookup_full : ∀ (t : Trie K V D) (k : List K), t.Full → t.lookup k ≠ .unknown
   | .stub _, _, h => h.elim
@@ -249,6 +332,63 @@ theorem Kids.descend_congr (hH : Function.Injective H) (o : Op V) :
           obtain ⟨rfl, rfl⟩ := h
           obtain ⟨ks2', e1, e2, e3⟩ := hdn ks2 b2 hr
           refine ⟨.cons c' t' ks2', by rw [e1], by simp [Kids.digests, h1, e2], hf.1, e3⟩
+end
+
+
+/-! ## A write that succeeds read no stub on its path -/
+
+theorem lookup_node_none {p k : List K} {v : Option V} {ks : Kids K V D}
+    (h : dropPrefix p k = none) : (Trie.node p v ks).lookup k = .absent := by
+  simp [Trie.lookup, h]
+
+theorem lookup_node_nil {p k : List K} {v : Option V} {ks : Kids K V D}
+    (h : dropPrefix p k = some []) : (Trie.node p v ks).lookup k = .ofOption v := by
+  simp [Trie.lookup, h]
+
+theorem lookup_node_cons {p k : List K} {v : Option V} {ks : Kids K V D} {c : K} {r : List K}
+    (h : dropPrefix p k = some (c :: r)) : (Trie.node p v ks).lookup k = ks.lookup c r := by
+  simp [Trie.lookup, h]
+
+mutual
+theorem Trie.apply_resolved (o : Op V) :
+    ∀ (t : Trie K V D) (k : List K) (r : Option (Trie K V D)), t.apply o k = some r →
+      t.lookup k ≠ .unknown
+  | .stub _, _, _, h => by simp [Trie.apply] at h
+  | .node pp v ks, k, r, h => by
+    have hh := split_holds pp k
+    simp only [Trie.apply] at h
+    cases hs : split pp k with
+    | equal =>
+      rw [hs] at hh
+      rw [lookup_node_nil (dropPrefix_eq_some.2 (by simpa [Split.Holds] using hh))]
+      cases v <;> simp [Read.ofOption]
+    | keyLonger c rr =>
+      rw [hs] at hh; simp only [hs] at h
+      rw [lookup_node_cons (dropPrefix_eq_some.2 hh)]
+      apply Kids.descend_resolved o ks c rr
+      intro hf; simp [hf] at h
+    | keyShorter c rr =>
+      rw [hs] at hh
+      rw [lookup_node_none (dropPrefix_of_keyShorter hh)]; simp
+    | diverge q a ka b pb =>
+      rw [hs] at hh
+      rw [lookup_node_none (dropPrefix_of_diverge hh.1 hh.2.1 hh.2.2)]; simp
+theorem Kids.descend_resolved (o : Op V) :
+    ∀ (ks : Kids K V D) (c : K) (rr : List K), ks.descend o c rr ≠ .fail →
+      ks.lookup c rr ≠ .unknown
+  | .nil, _, _, _ => by simp [Kids.lookup]
+  | .cons c' t rest, c, rr, h => by
+    simp only [Kids.descend, Kids.lookup] at h ⊢
+    split
+    · next hc =>
+      simp only [hc, ite_true] at h
+      cases ha : t.apply o (c :: rr) with
+      | none => simp [ha] at h
+      | some r => exact Trie.apply_resolved o t _ r ha
+    · next hc =>
+      simp only [hc, ite_false] at h
+      apply Kids.descend_resolved o rest c rr
+      intro hf; simp [hf] at h
 end
 
 end Lattice.Merkle
