@@ -2,7 +2,7 @@
 
 Formal models of the Lattice protocol: TLA+ models checked with TLC, trace
 validation of the implementation against them, and Lean proofs of value
-conservation.
+conservation and of the Merkle state commitments.
 
 The models are written from the normative specification
 ([Lattice `docs/spec.md`](https://github.com/adalinxx/Lattice/blob/main/docs/spec.md)),
@@ -425,7 +425,9 @@ both since adalinxx/Lattice#40, and the model has the receipt rule.
 `scripts/lean_mutants.py traces/value-2dfbab1 traces/value-width-38bef1e`
 breaks one rule of the model at
 a time. A rule a theorem depends on must make the proofs stop building, and
-every mutant must make the model disagree with the implementation's traces:
+every value-model mutant must make the model disagree with the implementation's
+traces. The Merkle trie has no implementation traces yet, so its mutants must
+break the proofs:
 
 | Mutant | Proofs | Traces |
 |---|---|---|
@@ -443,12 +445,136 @@ every mutant must make the model disagree with the implementation's traces:
 | a receipt with zero demand is accepted | (no theorem states it) | disagree |
 | deposits applied before withdrawals | (no theorem states it) | disagree |
 | balances move delta by delta in action order, not netted | (no theorem states it) | disagree |
+| a deletion skips the collapse | break | (not traced) |
+| a node's digest ignores its prefix | break | (not traced) |
+| an insertion reads a stub child as absent | break | (not traced) |
+| a split keeps the old prefix on the moved node | break | (not traced) |
+| the root `count` does not move | break | (not traced) |
+| an inserted child is not put in character order | break | (not traced) |
+| an insertion overwrites an existing value | break | (not traced) |
+| a deletion at a key with no value succeeds | break | (not traced) |
+| a collapse merges a stub instead of failing | break | (not traced) |
+| the root's digest ignores `count` | break | (not traced) |
 
 Not modelled: general key-value actions and nonces (they move no value),
 signatures, policies, state growth, the encoding bounds of the other action
-fields (a value outside them cannot be written), the genesis premine, and the Merkle proofs themselves (each map stands for its
-proven sub-state).
+fields (a value outside them cannot be written), and the genesis premine.
+Each map stands for its proven sub-state; what a sub-state root commits to is
+the subject of the next section.
+
+### Merkle state commitments
+
+`LatticeProofs/Merkle.lean` models how a block commits to each sub-state. The
+spec does not define the structure (see the discrepancies below), so this
+model is written from the implementation: cashew 5.0.3, the version Lattice
+pins, whose `MerkleDictionary` is a path-compressed radix (Patricia) trie
+keyed by characters.
+
+- **Trie.** A root holds a `count` and children filed under a key's first
+  character; it has no prefix and no value. An inner node holds a `prefix`, an
+  optional `value`, and children filed under the next character, in character
+  order. A node's digest is an abstract `H` of its fields with each child
+  replaced by the child's digest (`Enc`); the root's CID is the commitment.
+- **Partial trie.** There is no proof object. A validator resolves the nodes
+  on the touched paths (each fetched by CID and hash-checked) and leaves every
+  other child as a stub that names only its digest. One type, `Trie`, holds
+  both; a full trie is one with no stub (`Full`).
+- **Reads** return `found`, `absent`, or `unknown` (a stub on the path). The
+  implementation reads with `try? get`, which turns `unknown` into absent.
+- **Writes** (`insert`, `update`, `delete`) follow `RadixNode.transform` for
+  one key: an insertion splits a prefix where the key leaves it, a deletion
+  collapses (a node left with no value and one child merges into it, and the
+  merged child must be resolved), the preconditions of `proof()` are enforced
+  (insertion at an absent key, update and deletion at a present one), and a
+  write that needs a stub's contents fails. The root never collapses, refuses
+  the empty key, and moves `count` by `+1`, `0` or `-1`.
+- **Canonical form** (`Canon`): every node resolved with a nonempty prefix,
+  a value or at least two children, children filed under their prefix's first
+  character in strictly increasing order, and `count` equal to the number of
+  entries.
+
+**Collision resistance.** `H` is not assumed injective: a 256-bit digest of
+unbounded encodings has collisions, so that hypothesis would make every
+theorem vacuous for SHA-256. A theorem that compares digests assumes instead
+`NoCollision H A B`, that no encoding of a resolved node in the tries it names
+collides with another (for a run of writes, every trie the run reaches,
+`Root.RunHasEnc`). That holds unless those particular tries contain a SHA-256
+collision, so each theorem reads in the standard form: a breach yields a
+SHA-256 collision among the nodes involved. `or_collision` turns any of them
+into that form, and `lookup_sound_or_collision`, `apply_sound_or_collision`
+and `block_commits_or_collision` state it outright: the property holds, or
+two distinct encodings, one from each side, have the same digest. Theorems
+about canonical tries take `StrictOrder K`, that the character order is a
+strict total order.
+
+| Theorem | Spec |
+|---|---|
+| `or_collision`, `lookup_sound_or_collision`, `apply_sound_or_collision`, `block_commits_or_collision`: the collision-extraction forms: the property holds or a collision between the two sides' nodes is exhibited | §6.1, §11 |
+| `lookup_sound`: a read of a partial trie whose root equals a full trie's, when found or absent, is that trie's read | §6.1 |
+| `unknown_write_fails`, `read_then_write_sound`: a write through a stub fails, so a write that succeeds read no stub, and the `try? get` read it was chosen from is the committed value | §6.1 |
+| `apply_sound`: a write that succeeds on a partial trie gives the root the same write gives on the full trie | §6.1 |
+| `apply_correct`, `apply_complete`: on a canonical trie a write succeeds exactly when its precondition holds on the map, changes the map at its key only, and leaves the trie canonical, `count` included | §6.1-6.5 |
+| `canonical_unique`, `digest_of_map`: two canonical tries that hold the same map are equal, so the root is a function of the map, not of the writes that built it | §3.4 |
+| `witness_digest`, `witness_live`: the partial trie that resolves only a write's path and the nodes of the children along it has the same root, and the write succeeds on it with the same result (this witness resolves more than cashew's `proof()`, see below) | §6.1 |
+| `applyAll_sound`, `applyAll_correct`, `batch_eq_fold`: the same for writes one after another; a batch result that is canonical and holds the map the writes make is the sequential result | §6.1 |
+| `commits_empty`, `commits_unique`, `block_commits`, `chain_commits`, `chain_from_empty`: from the empty root, a chain of blocks, each verified against a partial trie of the root the last one left, ends at the root of the canonical trie of the map its writes make | §12.1 |
+| `receipts_commit`: tied to the value model for the receipt sub-state: the root after a block's receipt writes commits to exactly the receipts `applyReceipts` produces | §6.5, §12.1 |
+
+Abstracted: the DAG-CBOR bytes and the CID's multibase text (a node's digest
+is `H` of its fields); SHA-256's collision resistance (the `NoCollision`
+hypotheses above); key characters (any `K` with decidable equality and a strict
+order; the implementation's keys are visible ASCII); `encryptionInfo` (Lattice
+writes state tries unencrypted); Volume storage and pinning; nested dictionaries as
+values. The root `count` is modelled: it is in the digest, moves by
+arithmetic, and is equal to the number of entries in a canonical trie.
+
+**Batches.** Lattice writes each sub-state in one `transform` pass over all
+of a block's keys (one write per key), after one `proof()` that resolves
+every path, and the batch collapses jointly. The model applies writes one at
+a time (`Root.applyAll`). `batch_eq_fold` reduces the gap to one property:
+if cashew's batch output is canonical and holds the map the writes make, it
+is the sequential result, because there is only one such trie. That property
+of cashew's batch code (`insertAll`, `transformPrefixLonger`,
+`transformDivergent`, the joint collapse and `resolveGrandchildren`) is not
+proven. Only the receipt sub-state is tied to the value model; balances and
+deposits use the same writes but are not.
+
+**Liveness is shown for a larger proof than cashew's.** `witness` resolves, at
+every node on the path, all children's nodes (and at the key's own node, its
+children's nodes even when the write is not a deletion). cashew's `proof()`
+resolves the path and fetches grandchildren only where a batched deletion
+could leave one child (`shouldExpandForBatchedDeletion`). `witness_live` shows
+that the larger partial trie suffices; it does not show that cashew's smaller
+one does.
+
+**Spec and implementation differ** (found while mapping the model; Lattice
+is not changed here):
+- §2, §3.4 and §11 call each sub-state an SMT (sparse Merkle tree). It is a
+  character-keyed compressed radix trie whose root also commits to a `count`
+  of entries.
+- §6.1 partitions actions into 5 groups, generates "Sparse Merkle proofs" and
+  assembles 5 roots. `LatticeState` has 4 sub-states (account, general,
+  deposit, receipt), and there is no proof object: the proof is the partially
+  resolved trie, and the transform recomputes the root from it.
+- A child link is encoded as a `{"rawCID": <CID text>}` map, and a node's
+  children as an array of `{key, value}` entries sorted by key. The spec says
+  neither.
+- The canonical shape is not stated in the spec, and cashew checks only part
+  of it on decoding. Its strict DAG-CBOR decode (re-encoding must give back
+  the bytes) enforces single-character child keys, strictly increasing child
+  order and no duplicates. It does not check that a child's prefix starts with
+  the character it is filed under, that a prefix is nonempty, that a node holds
+  a value or at least two children, or that `count` matches the contents. The
+  root is a function of the map only because every state is a transform
+  output from the empty root.
+
+```sh
+cd lean && lake build                    # includes the Merkle proofs
+lake env lean LatticeProofs/Axioms.lean  # lists the Merkle theorems too
+```
 
 ## Roadmap
 
-1. **Lean:** Merkle proof semantics.
+1. **Lean:** cashew's batch transform, that its output is canonical (closes
+   the batch gap above).
+2. **Lean:** tie the balance and deposit sub-states to the Merkle model.
