@@ -105,21 +105,22 @@ TrueCumWork(ch, b) ==
                                          /\ pc[2] \in Subtree("C", b)}
     IN  grinds + Sum(cs, [pc \in cs |-> Attributed(pc[1])])
 
-Better(ch, x, y) ==
-    \/ TrueCumWork(ch, x) > TrueCumWork(ch, y)
-    \/ /\ TrueCumWork(ch, x) = TrueCumWork(ch, y)
-       /\ CidRank[x] < CidRank[y]
+\* W is the chain's weight table, computed once per descent.
+Better(W, x, y) ==
+    \/ W[x] > W[y]
+    \/ W[x] = W[y] /\ CidRank[x] < CidRank[y]
 
-Best(ch, S) == CHOOSE x \in S : \A y \in S \ {x} : Better(ch, x, y)
+Best(W, S) == CHOOSE x \in S : \A y \in S \ {x} : Better(W, x, y)
 
 RECURSIVE Descend(_, _, _)
-Descend(ch, b, E) ==
+Descend(W, b, E) ==
     LET C == {c \in E : Parent[c] = b}
-    IN  IF C = {} THEN b ELSE Descend(ch, Best(ch, C), E)
+    IN  IF C = {} THEN b ELSE Descend(W, Best(W, C), E)
 
 TipOver(ch, E) ==
-    IF Roots(ch) \cap E = {} THEN None
-    ELSE Descend(ch, Best(ch, Roots(ch) \cap E), E)
+    LET W == [x \in ChainBlocks(ch) |-> TrueCumWork(ch, x)]
+    IN  IF Roots(ch) \cap E = {} THEN None
+        ELSE Descend(W, Best(W, Roots(ch) \cap E), E)
 
 Selectable(ch) == {b \in weighed[ch] : AncOrSelf(b) \cap excluded[ch] = {}}
 CanonicalTip(ch) == TipOver(ch, Selectable(ch))
@@ -133,22 +134,20 @@ ValidatedTip(ch) == TipOver(ch, validated[ch])
 (* "proven": the parent's executed-from-genesis frontier produced new, at  *)
 (*   or below a block that produced old.  A noncanonical branch may prove  *)
 (*   it.  Equality is never evidence on its own.                           *)
-(* "invalid": a completed check that the anchor moved backward or          *)
-(*   sideways: back to emptyHeader, or both anchors held and old is not an *)
-(*   ancestor of new.                                                      *)
-(* "held": not proven here yet (anchor unexecuted or not held); retried,   *)
-(*   never a verdict.                                                      *)
+(* "invalid": the anchor is emptyHeader where the spec forbids it: a child *)
+(*   genesis carried by a genesis (§5.1 rule 4), or a non-genesis block    *)
+(*   dropping back to empty from a real anchor (§5.3 step 6).              *)
+(* "held": not proven here, including a sideways anchor; retried, never a  *)
+(*   verdict (§9.5: anchoring elsewhere gets "not proven here").  State    *)
+(*   CIDs are not block IDs, so a later header could still supply a path.  *)
 
 OldAnchor(b) == IF Parent[b] = None THEN None ELSE Anchor[Parent[b]]
 
 Continuity(b) ==
     LET old == OldAnchor(b)
         new == Anchor[b]
-    IN  IF new = None THEN IF old = None THEN "proven" ELSE "invalid"
-        ELSE IF /\ old # None
-                /\ {old, new} \subseteq weighed["P"]
-                /\ old \notin AncOrSelf(new)
-             THEN "invalid"
+    IN  IF new = None
+           THEN IF Parent[b] # None /\ old = None THEN "proven" ELSE "invalid"
         ELSE IF /\ new \in validated["P"]
                 /\ old \in AncOrSelf(new) \cup {None}
              THEN "proven"
@@ -157,21 +156,31 @@ Continuity(b) ==
 -----------------------------------------------------------------------------
 (* Actions.                                                                *)
 
-Observe(o) ==
-    /\ o \notin delivered
+Record(o) ==
     /\ delivered' = delivered \cup {o}
     /\ IF loc[o.ch][o.g] \in {None, o.b}
           THEN /\ loc' = [loc EXCEPT ![o.ch][o.g] = o.b]
                /\ qty' = [qty EXCEPT ![o.ch][o.g] = IF o.q > @ THEN o.q ELSE @]
           ELSE UNCHANGED <<loc, qty>>
+
+\* A further observation at an admitted block.
+Observe(o) ==
+    /\ o \notin delivered
+    /\ o.b \in weighed[o.ch]
+    /\ Record(o)
     /\ UNCHANGED <<weighed, validated, excluded>>
 
-Admit(ch, b) ==
-    /\ b \notin weighed[ch]
-    /\ Parent[b] \in weighed[ch] \cup {None}
-    /\ GrindsAt(ch, b) # {}
-    /\ weighed' = [weighed EXCEPT ![ch] = @ \cup {b}]
-    /\ UNCHANGED <<delivered, loc, qty, validated, excluded>>
+\* Admission carries the block's securing grind in the same batch, as the
+\* implementation's import does.  (Staged locations ahead of admission are
+\* covered by ForkChoice.tla; folding them here keeps the state space small.)
+Admit(o) ==
+    /\ o \notin delivered
+    /\ o.b \notin weighed[o.ch]
+    /\ Parent[o.b] \in weighed[o.ch] \cup {None}
+    /\ loc[o.ch][o.g] \in {None, o.b}
+    /\ Record(o)
+    /\ weighed' = [weighed EXCEPT ![o.ch] = @ \cup {o.b}]
+    /\ UNCHANGED <<validated, excluded>>
 
 CanExecute(ch, b) ==
     /\ b \in weighed[ch] \ (validated[ch] \cup excluded[ch])
@@ -207,9 +216,9 @@ Init ==
     /\ excluded  = [ch \in Chains |-> {}]
 
 Next ==
-    \/ \E o \in Obs : Observe(o)
+    \/ \E o \in Obs : Admit(o) \/ Observe(o)
     \/ \E ch \in Chains : \E b \in ChainBlocks(ch) :
-           Admit(ch, b) \/ ValidateOk(ch, b) \/ Exclude(ch, b)
+           ValidateOk(ch, b) \/ Exclude(ch, b)
 
 Spec == Init /\ [][Next]_vars
 
@@ -225,9 +234,12 @@ TypeOK ==
         /\ validated[ch] \cap excluded[ch] = {}
 
 \* §5.3 step 6 / §9.5: every validated child block is anchored at a state
-\* the parent's executed frontier produced (or emptyHeader).
+\* the parent's executed frontier produced.  Only a non-genesis block whose
+\* predecessor commits none may commit emptyHeader (§5.1 rule 4).
 AnchoredAtExecuted ==
-    \A b \in validated["C"] : Anchor[b] \in validated["P"] \cup {None}
+    \A b \in validated["C"] :
+        \/ Anchor[b] \in validated["P"]
+        \/ Anchor[b] = None /\ Parent[b] # None /\ OldAnchor(b) = None
 
 \* §5.3: along validated child history, anchors only advance along the
 \* parent's ancestry: never backward to emptyHeader, never sideways.
@@ -241,9 +253,22 @@ AnchorsAdvance ==
 \* §9.10: each physical grind is counted once in a child block's weight.
 \* A child block's weight is built from components: each located child
 \* grind, and each attributed run, which stands for the parent grinds of
-\* that run other than the carrier's own.  The components' grind sets must
-\* be disjoint, and the weight must equal the sum over distinct grinds.
-RunGrinds(p) == {g \in Grinds : loc["P"][g] \in Run(p) \ {p}}
+\* that run other than the carrier's own.  The weight must equal the sum
+\* over the distinct grinds, computed from the reference above rather than
+\* from Attributed; the components must not share a grind.  (Disjointness
+\* also follows from the ASSUME that a merged grind sits at a carrier.)
+\* Reference, independent of NearestCarrier and Run: the carrier whose run
+\* holds q is the deepest committing block on q's ancestry.
+Committer(x) == \E c \in CBlocks : <<x, c>> \in Commits
+RefCarrier(q) ==
+    LET cs == {x \in AncOrSelf(q) : Committer(x)}
+    IN  IF cs = {} THEN None ELSE CHOOSE x \in cs : cs \subseteq AncOrSelf(x)
+
+\* The parent grinds an attributed run of p stands for: on weighed blocks
+\* whose deepest carrier is p, other than p's own.
+RunGrinds(p) ==
+    {g \in Grinds : /\ loc["P"][g] \in weighed["P"] \ {p}
+                    /\ RefCarrier(loc["P"][g]) = p}
 
 \* Keyed, so two components holding the same grinds stay two components.
 Components(b) ==

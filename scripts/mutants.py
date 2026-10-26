@@ -40,7 +40,7 @@ MUTANTS = [
      "Attributed(p) == RunWork(p) - GrindWork(p)", "Attributed(p) == RunWork(p)"),
     ("no-run-attribution", "ExpectedAnswer", "MCHierarchy_Main.cfg", "Hierarchy.tla",
      r"IN  grinds + Sum(cs, [pc \in cs |-> Attributed(pc[1])])", "IN  grinds"),
-    ("runs-follow-parent-canonicity", "ExpectedAnswer", "MCHierarchy_P2Bad.cfg", "Hierarchy.tla",
+    ("runs-follow-parent-canonicity", "ExpectedAnswer", "MCHierarchy_ParentBad.cfg", "Hierarchy.tla",
      r'Run(p) == {q \in weighed["P"] :',
      r'Run(p) == {q \in {y \in weighed["P"] : AncOrSelf(y) \cap excluded["P"] = {}} :'),
     ("continuity-requires-canonical-anchor", "ExpectedAnswer", "MCHierarchy_Main.cfg", "Hierarchy.tla",
@@ -49,13 +49,16 @@ MUTANTS = [
     ("continuity-accepts-unexecuted-anchor", "AnchoredAtExecuted", "MCHierarchy_P1Gap.cfg", "Hierarchy.tla",
      r'        ELSE IF /\ new \in validated["P"]', r'        ELSE IF /\ new \in weighed["P"]'),
     ("continuity-allows-sideways", "AnchorsAdvance", "MCHierarchy_Main.cfg", "Hierarchy.tla",
-     r"""                /\ old \notin AncOrSelf(new)
-             THEN "invalid"
-        ELSE IF /\ new \in validated["P"]
+     r"""        ELSE IF /\ new \in validated["P"]
                 /\ old \in AncOrSelf(new) \cup {None}""",
-     r"""                /\ FALSE
-             THEN "invalid"
-        ELSE IF /\ new \in validated["P"]"""),
+     r"""        ELSE IF /\ new \in validated["P"]"""),
+    ("child-genesis-may-anchor-empty", "AnchoredAtExecuted", "MCHierarchy_Main.cfg", "Hierarchy.tla",
+     r"THEN IF Parent[b] # None /\ old = None THEN", "THEN IF old = None THEN"),
+    ("nearest-carrier-skips-itself", "PhysicalWorkOnce", "MCHierarchy_Main.cfg", "Hierarchy.tla",
+     r"""    IF \E c \in CBlocks : <<q, c>> \in Commits THEN q
+    ELSE IF Parent[q] = None THEN None""",
+     r"""    IF Parent[q] = None THEN None
+    ELSE IF \E c \in CBlocks : <<Parent[q], c>> \in Commits THEN Parent[q]"""),
 ]
 
 

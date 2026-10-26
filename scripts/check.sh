@@ -4,7 +4,7 @@ set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 failures=0
 for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
-           MCHierarchy_Main.cfg MCHierarchy_P2Bad.cfg MCHierarchy_P1Gap.cfg; do
+           MCHierarchy_Main.cfg MCHierarchy_ParentBad.cfg MCHierarchy_P1Gap.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
