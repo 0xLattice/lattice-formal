@@ -300,7 +300,7 @@ transition from the spec:
 - the parent receipt a withdrawal needs (§8.1 phase 3);
 - the fee rule and coinbase (§8.2);
 - the width bounds: a delta is an `Int64` other than `Int64.min` (§3.6), a
-  coinbase paid to a recipient fits a positive `Int64` (§5.2 step 11; a
+  coinbase paid to a recipient fits an `Int64` (§5.2 step 11; a
   burned one has no bound), and a balance fits a `UInt64` (§6.2).
 
 | Theorem | Spec |
@@ -315,7 +315,7 @@ transition from the spec:
 | `deposit_fresh`, `receipt_fresh`: insertion only at absent keys | §12.4.1-2 |
 | `receipt_provenance`: every receipt was inserted by a receipt action | §6.5 |
 | `applyBlock_wf`: sub-states keep distinct keys and no zero balance | §6.2 |
-| `balances_fit`, `coinbase_fits`: every balance fits a `UInt64`, and a paid coinbase a positive `Int64` | §6.2, §5.2 |
+| `balances_fit`, `coinbase_fits`: every balance fits a `UInt64`, and a paid coinbase an `Int64` | §6.2, §5.2 |
 
 ```sh
 cd lean && lake build                    # the proofs

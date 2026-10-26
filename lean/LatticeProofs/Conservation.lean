@@ -26,7 +26,7 @@ theorem balances_fit (h : applyBlock dir pr s b = some s') :
     ∀ e ∈ s'.balances, e.2 ≤ uint64Max :=
   (applyBlock_fits h).2
 
-/-- §5.2 step 11: a valid block's coinbase credit fits a positive `Int64`. -/
+/-- §5.2 step 11: a valid block's coinbase credit fits an `Int64`. -/
 theorem coinbase_fits (h : applyBlock dir pr s b = some s') (hr : b.recipient = some r) :
     (b.reward : Int) + fee b.actions ≤ int64Max := by
   have := (applyBlock_fits h).1
