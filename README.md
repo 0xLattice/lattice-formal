@@ -295,7 +295,8 @@ transition from the spec:
 - account balances, deleted at zero (§6.2);
 - deposits and withdrawals, withdrawals first, with a permanent zero spent
   marker (§6.4);
-- receipts and the debit and credit they derive (§6.5);
+- receipts, with a nonzero demand, and the debit and credit they derive
+  (§6.5);
 - the parent receipt a withdrawal needs (§8.1 phase 3);
 - the fee rule and coinbase (§8.2).
 
@@ -318,16 +319,63 @@ lake env lean LatticeProofs/Axioms.lean  # only propext, Classical.choice, Quot.
 python3 scripts/lean_mutants.py          # from the repo root
 ```
 
-`scripts/lean_mutants.py` breaks one rule of the model at a time and requires
-the proofs to stop building. Each mutant makes at least one stated theorem
-false:
-- a withdrawal leaves no spent marker;
-- the coinbase pays the reward without the fees;
-- no fee rule;
-- a withdrawal ignores the parent receipt;
-- over-withdrawal;
-- a deposit overwrites;
-- a negative balance is clamped.
+### Refinement by traces
+
+The proofs say the model conserves value; the traces say Lattice's state
+transition is the model. Lattice's `ValueTransitionTraceExportTests` builds
+seeded chains of child-chain blocks and runs each through the real validator
+(`Block.validateNexus`, the full non-genesis path: action shape rules, fee
+rule and coinbase, parent receipts, state proofs and updates). It records the
+entering state, the parent receipts, the block's value actions, reward and
+recipient, and the implementation's verdict and post-state, read back from
+its real state. `lake exe tracecheck` replays every case through `applyBlock`:
+the verdict must agree, and on a valid block every entry of the three post
+sub-states must be equal.
+
+```sh
+cd lean && lake build tracecheck && .lake/build/bin/tracecheck ../traces/value-2dfbab1/*.json
+```
+
+`traces/value-2dfbab1/` holds 510 cases (Lattice PR #39 at `2dfbab1`), all
+conforming:
+- 332 valid blocks: 251 with a recipient and 81 burning fees, with spent
+  markers in 102. 105 are valid only because account deltas net per owner: in
+  action order the owner's debit comes first and alone overdraws it. Others
+  rely on the coinbase netting with the recipient's own debits.
+- 178 blocks that each break exactly one rule, and the test asserts the
+  implementation rejects each at that rule's check (a deposit and a receipt
+  at an existing key share the insertion-proof failure, and a wrong-amount
+  and a spent withdrawal share the spend check): overdraft, the fee rule, a
+  zero delta, a zero deposit, a deposit or receipt at an existing key, a
+  withdrawal with the wrong amount, of a spent deposit, without a parent
+  receipt or with one naming another withdrawer, of a deposit made in the
+  same block (withdrawals come first, §6.4), and zero demands or amounts on
+  receipts and withdrawals.
+
+Checking the model against the implementation found two rules the spec did
+not state, and the model lacked one of them: a receipt needs a nonzero
+`amountDemanded`, and a block's account deltas, explicit, receipt-derived and
+the coinbase alike, net per owner before any balance moves. The spec states
+both since adalinxx/Lattice#40, and the model has the receipt rule.
+
+### Planted bugs
+
+`scripts/lean_mutants.py traces/value-2dfbab1` breaks one rule of the model at
+a time. A rule a theorem depends on must make the proofs stop building, and
+every mutant must make the model disagree with the implementation's traces:
+
+| Mutant | Proofs | Traces |
+|---|---|---|
+| a withdrawal leaves no spent marker | break | disagree |
+| the coinbase pays the reward without the fees | break | disagree |
+| no fee rule | break | disagree |
+| a withdrawal ignores the parent receipt | break | disagree |
+| over-withdrawal | break | disagree |
+| a deposit overwrites | break | disagree |
+| a negative balance is clamped | break | disagree |
+| a receipt with zero demand is accepted | (no theorem states it) | disagree |
+| deposits applied before withdrawals | (no theorem states it) | disagree |
+| balances move delta by delta in action order, not netted | (no theorem states it) | disagree |
 
 Not modelled: general key-value actions and nonces (they move no value),
 signatures, policies, state growth, the `Int64` and `UInt64` width bounds, the
@@ -338,6 +386,4 @@ proven sub-state).
 
 1. **Header-rule exclusions** (§9.9) in `Hierarchy.tla`, and three-level
    implementation traces.
-2. **Lean refinement:** connect `Model.lean` to the implementation with the
-   same trace approach, or extend it with Merkle proof semantics and width
-   bounds.
+2. **Lean:** Merkle proof semantics and the width bounds.

@@ -272,7 +272,7 @@ theorem applyReceipts_spec :
         · intro a k hmem hk
           rw [List.mem_cons] at hmem
           rcases hmem with heq | hmem
-          · subst heq; simp [receiptKeyOf] at hk; subst hk; exact hget
+          · subst heq; simp [receiptKeyOf] at hk; subst hk; exact hget.1
           · have q := r2 a k hmem hk
             rw [Map.get?_set] at q
             split at q

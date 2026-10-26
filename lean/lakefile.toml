@@ -3,3 +3,7 @@ defaultTargets = ["LatticeProofs"]
 
 [[lean_lib]]
 name = "LatticeProofs"
+
+[[lean_exe]]
+name = "tracecheck"
+root = "TraceCheck"

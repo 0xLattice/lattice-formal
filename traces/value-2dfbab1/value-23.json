@@ -1,0 +1,1924 @@
+[
+  {
+    "block" : {
+      "actions" : [
+
+      ],
+      "recipient" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+
+    ],
+    "prev" : {
+      "balances" : [
+
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+
+      ],
+      "recipient" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+
+      ],
+      "recipient" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          100
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 5,
+          "amountDeposited" : 22,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "kind" : "deposit",
+          "nonce" : 1
+        },
+        {
+          "delta" : -22,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 3,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          100
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "feeRule"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 18,
+          "amountDeposited" : 12,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "kind" : "deposit",
+          "nonce" : 0
+        },
+        {
+          "delta" : -12,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : -40,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 28,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : -13,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : 10,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          100
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          100
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          100
+        ]
+      ],
+      "deposits" : [
+
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          75
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          128
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          70
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          12
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 18,
+          "amountWithdrawn" : 16,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "kind" : "withdrawal",
+          "nonce" : 0,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -19,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : 19,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -13,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 9,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : -19,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 19,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        }
+      ],
+      "recipient" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          75
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          128
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          70
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          12
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "withdrawWrongAmount"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 0,
+          "amountWithdrawn" : 49,
+          "demander" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          "kind" : "withdrawal",
+          "nonce" : 1,
+          "withdrawer" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "amountDemanded" : 13,
+          "amountDeposited" : 4,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "deposit",
+          "nonce" : 1
+        },
+        {
+          "amountDemanded" : 20,
+          "amountDeposited" : 30,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "kind" : "deposit",
+          "nonce" : 1
+        },
+        {
+          "amountDemanded" : 29,
+          "amountDeposited" : 7,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "kind" : "deposit",
+          "nonce" : 1
+        },
+        {
+          "delta" : -4,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -30,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : -7,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          75
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          128
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          70
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          12
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "withdrawZeroDemand"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 18,
+          "amountWithdrawn" : 12,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "kind" : "withdrawal",
+          "nonce" : 0,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "amountDemanded" : 0,
+          "amountWithdrawn" : 3,
+          "demander" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          "kind" : "withdrawal",
+          "nonce" : 0,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 5,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          75
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          128
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          70
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          12
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "withdrawZeroDemand"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 18,
+          "amountWithdrawn" : 12,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "kind" : "withdrawal",
+          "nonce" : 0,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "amountDemanded" : 34,
+          "amountDeposited" : 22,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "deposit",
+          "nonce" : 3
+        },
+        {
+          "delta" : -22,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 6,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -25,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 10,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -75,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : 65,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        }
+      ],
+      "recipient" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          75
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          128
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          70
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          12
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          324
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          39
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          22
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "delta" : -32,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 17,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : -10,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 6,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : -7,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 4,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : 27,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        }
+      ],
+      "recipient" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          324
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          39
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          22
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "feeRule"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 21,
+          "amountDeposited" : 10,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "deposit",
+          "nonce" : 2
+        },
+        {
+          "delta" : -17,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 17,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : -17,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : 17,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -10,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -4,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 4,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -33,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 33,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        }
+      ],
+      "recipient" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          324
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          39
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          22
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          33
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          403
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          17
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          22
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 34,
+          "amountWithdrawn" : 22,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "withdrawal",
+          "nonce" : 3,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -4,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : 4,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : -4,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 4,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : -49,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : 49,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : -16,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : 16,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : -12,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 4,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : 2,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        }
+      ],
+      "recipient" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          33
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          403
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          17
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          22
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          131
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 48,
+          "amountDeposited" : 30,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "deposit",
+          "nonce" : 2
+        },
+        {
+          "delta" : -30,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 21,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          131
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          101
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 48,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          30
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 11,
+          "amountDeposited" : 2,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "kind" : "deposit",
+          "nonce" : 0
+        },
+        {
+          "amountDemanded" : 14,
+          "demander" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          "directory" : "G2",
+          "kind" : "receipt",
+          "nonce" : 3,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -2,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        },
+        {
+          "delta" : -89,
+          "kind" : "account",
+          "owner" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 21,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 48,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          101
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 48,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          30
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "overdraft"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 21,
+          "amountWithdrawn" : 0,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "withdrawal",
+          "nonce" : 2,
+          "withdrawer" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "amountDemanded" : 30,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "G2",
+          "kind" : "receipt",
+          "nonce" : 0,
+          "withdrawer" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+        },
+        {
+          "delta" : -58,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : 58,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : -5,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 5,
+          "kind" : "account",
+          "owner" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 21,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 48,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          101
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 48,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          30
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "withdrawZeroAmount"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "amountDemanded" : 21,
+          "amountWithdrawn" : 0,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "kind" : "withdrawal",
+          "nonce" : 2,
+          "withdrawer" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "amountDemanded" : 39,
+          "amountDeposited" : 15,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "kind" : "deposit",
+          "nonce" : 1
+        },
+        {
+          "amountDemanded" : 21,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "G2",
+          "kind" : "receipt",
+          "nonce" : 3,
+          "withdrawer" : "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+        },
+        {
+          "delta" : -15,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        }
+      ],
+      "recipient" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 21,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 48,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          101
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 48,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          30
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : null,
+    "violates" : "withdrawZeroAmount"
+  },
+  {
+    "block" : {
+      "actions" : [
+        {
+          "delta" : -387,
+          "kind" : "account",
+          "owner" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq"
+        },
+        {
+          "delta" : 30,
+          "kind" : "account",
+          "owner" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+        }
+      ],
+      "recipient" : null,
+      "reward" : 100
+    },
+    "dir" : "Child",
+    "parentReceipts" : [
+      [
+        {
+          "amountDemanded" : 18,
+          "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          "directory" : "Child",
+          "nonce" : 0
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 21,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4"
+      ],
+      [
+        {
+          "amountDemanded" : 34,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ],
+      [
+        {
+          "amountDemanded" : 48,
+          "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          "directory" : "Child",
+          "nonce" : 2
+        },
+        "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq"
+      ],
+      [
+        {
+          "amountDemanded" : 49,
+          "demander" : "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          "directory" : "Other",
+          "nonce" : 3
+        },
+        "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4"
+      ]
+    ],
+    "prev" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          4
+        ],
+        [
+          "bafyreidor6ylpk2ue5kozqqoroin7y2dwcgoxkz3m5sitjkg65etcyxrgq",
+          387
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          101
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 48,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          30
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "result" : {
+      "balances" : [
+        [
+          "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+          34
+        ],
+        [
+          "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+          101
+        ],
+        [
+          "bafyreig36b5ilqm26wjvtrjp4lfqx4tyu6v4sadxorystl4npbxlh2hhm4",
+          53
+        ]
+      ],
+      "deposits" : [
+        [
+          {
+            "amountDemanded" : 18,
+            "demander" : "bafyreidh35b5bhpobifyzfxcppmdz2wjfweiemfwdlxgb3yi4ttueiuhhq",
+            "nonce" : 0
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 21,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          10
+        ],
+        [
+          {
+            "amountDemanded" : 34,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 3
+          },
+          0
+        ],
+        [
+          {
+            "amountDemanded" : 48,
+            "demander" : "bafyreidv72mvb7eewjynvyoqhkkgwsbpsjc7uhpi4czkibu4af4tz2oua4",
+            "nonce" : 2
+          },
+          30
+        ]
+      ],
+      "receipts" : [
+
+      ]
+    },
+    "violates" : null
+  }
+]
