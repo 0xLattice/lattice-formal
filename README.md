@@ -711,14 +711,14 @@ arithmetic, and is equal to the number of entries in a canonical trie.
 
 **Batches.** Lattice writes each sub-state in one `transform` pass over all
 of a block's keys (one write per key), after one `proof()` that resolves
-every path, and the batch collapses jointly. The model applies writes one at
-a time (`Root.applyAll`). `batch_eq_fold` reduces the gap to one property:
-if cashew's batch output is canonical and holds the map the writes make, it
-is the sequential result, because there is only one such trie. That property
-of cashew's batch code (`insertAll`, `transformPrefixLonger`,
+every path, and the batch collapses jointly. The theorems above apply writes
+one at a time (`Root.applyAll`); `batch_eq_fold` shows that a canonical
+batch output holding the map the writes make is the sequential result.
+cashew's pass itself (`insertAll`, `transformPrefixLonger`,
 `transformDivergent`, the joint collapse and `resolveGrandchildren`) is
-proven under Batched writes below (`batch_eq_sequential`). Only the receipt sub-state is tied to the value model; balances and
-deposits use the same writes but are not.
+modelled and proven equal to the sequential run under Batched writes below
+(`batch_eq_sequential`). Only the receipt sub-state is tied to the value
+model; balances and deposits use the same writes but are not.
 
 **Liveness is shown for a larger proof than cashew's.** `witness` resolves, at
 every node on the path, all children's nodes (and at the key's own node, its
@@ -786,9 +786,9 @@ a value-less node into its last child (which the proof resolves only because
 it expands), failing batches, and a partial trie whose stubs the batch needs.
 
 **Planted bugs.** Each is a realistic slip in the batch code; the two first
-are the bugs cashew had. Each is killed by the theorem named, whose statement
-it falsifies (a concrete counterexample checked by evaluation), and is
-registered in `scripts/lean_mutants.py` (`MerkleBatch.lean`).
+are the bugs cashew had. Each makes the proofs stop building; the theorem
+named is the one whose statement it breaks. All are registered in
+`scripts/lean_mutants.py` (`MerkleBatch.lean`).
 
 | Mutant | Killed by |
 |---|---|
