@@ -523,4 +523,80 @@ theorem Kids.descend_correct (ho : StrictOrder K) (o : Op V) :
         · simp [Kids.length] at hlen ⊢; omega
 end
 
+mutual
+theorem Trie.Canon.full : ∀ {t : Trie K V D}, t.Canon → t.Full
+  | .stub _, h => h.elim
+  | .node _ _ ks, h => Kids.Canon.full (ks := ks) h.2.2
+theorem Kids.Canon.full : ∀ {ks : Kids K V D}, ks.Canon → ks.Full
+  | .nil, _ => trivial
+  | .cons _ t rest, h => ⟨Trie.Canon.full (t := t) h.2.1, Kids.Canon.full (ks := rest) h.2.2.1⟩
+end
+
+theorem collapse_ne_none {p : List K} {ks : Kids K V D} (h : ks.Canon) : collapse p ks ≠ none := by
+  match ks, h with
+  | .nil, _ => simp [collapse]
+  | .cons _ (.stub _) .nil, h => exact h.2.1.elim
+  | .cons _ (.node _ _ _) .nil, _ => simp [collapse]
+  | .cons _ _ (.cons _ _ _), _ => simp [collapse]
+
+/-! ## Completeness: a write whose precondition holds succeeds -/
+
+mutual
+theorem Trie.apply_complete (ho : StrictOrder K) (o : Op V) :
+    ∀ (t : Trie K V D) (k : List K) (c0 : K), t.Canon → t.HeadIs c0 → k.head? = some c0 →
+      o.pre (t.lookup k).toOption → t.apply o k ≠ none
+  | .stub _, _, _, hc, _, _, _ => hc.elim
+  | .node pp v ks, k, c0, hc, hh, hk, hpre => by
+    obtain ⟨hpp, hv, hks⟩ := hc
+    have hs := split_holds pp k
+    simp only [Trie.apply]
+    cases hsp : split pp k with
+    | equal =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs; subst hs
+      rw [lookup_node_nil (dropPrefix_eq_some.2 (List.append_nil _).symm)] at hpre
+      cases o <;> cases v <;> simp_all [Op.pre, Read.ofOption, Read.toOption, collapse_ne_none]
+    | keyLonger c rr =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs; subst hs
+      rw [lookup_node_cons (dropPrefix_append_self _ _)] at hpre
+      have hnf := Kids.descend_complete ho o ks c rr hks hpre
+      cases hd : ks.descend o c rr with
+      | missing =>
+        have hn := Kids.descend_missing o hd
+        rw [Kids.lookup_not_mem hn] at hpre
+        cases o <;> simp_all [Op.pre, Read.toOption]
+      | fail => exact absurd hd hnf
+      | done ks1 b =>
+        have hcan := (Kids.descend_correct ho o ks c rr ks1 b hks hd).2.2.2.1
+        simp only [hd]
+        split
+        · exact collapse_ne_none hcan
+        · simp
+    | keyShorter c rr =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs; subst hs
+      rw [lookup_node_none (dropPrefix_of_keyShorter rfl)] at hpre
+      cases o <;> simp_all [Op.pre, Read.toOption]
+    | diverge q a ka b pb =>
+      rw [hsp] at hs; simp only [Split.Holds] at hs
+      obtain ⟨rfl, rfl, hab⟩ := hs
+      rw [lookup_node_none (dropPrefix_of_diverge rfl rfl hab)] at hpre
+      cases o <;> simp_all [Op.pre, Read.toOption]
+theorem Kids.descend_complete (ho : StrictOrder K) (o : Op V) :
+    ∀ (ks : Kids K V D) (c : K) (rr : List K), ks.Canon → o.pre (ks.lookup c rr).toOption →
+      ks.descend o c rr ≠ .fail
+  | .nil, _, _, _, _ => by simp [Kids.descend]
+  | .cons c' t rest, c, rr, hc, hpre => by
+    simp only [Kids.descend]
+    by_cases hcc : c' = c
+    · subst hcc
+      simp only [Kids.lookup, ite_true] at hpre
+      have := Trie.apply_complete ho o t (c' :: rr) c' hc.2.1 hc.1 rfl hpre
+      simp only [ite_true]
+      cases ha : t.apply o (c' :: rr) with
+      | none => exact absurd ha this
+      | some r => cases r <;> simp
+    · simp only [Kids.lookup, hcc, ite_false] at hpre ⊢
+      have := Kids.descend_complete ho o rest c rr hc.2.2.1 hpre
+      cases hr : rest.descend o c rr <;> simp_all
+end
+
 end Lattice.Merkle
