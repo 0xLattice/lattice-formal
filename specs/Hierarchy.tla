@@ -1,12 +1,17 @@
 ------------------------------ MODULE Hierarchy ------------------------------
 (***************************************************************************)
-(* A parent chain and one child chain on one node, modelled from the       *)
+(* A root chain P, a child chain C and, optionally, a grandchild chain G  *)
+(* (GBlocks may be empty) on one node, modelled from the                   *)
 (* normative spec (Lattice docs/spec.md): parent-attributed run work       *)
 (* (§9.10), parent-state continuity (§5.3 step 6, §9.5), and fork choice   *)
 (* with weighed and validated tiers on each chain (§9.2-9.4, §9.9).        *)
 (*                                                                         *)
-(* The parent is the root chain.  The child is reached under one           *)
-(* directory, so "commits into d" is the constant relation Commits.        *)
+(* P is the root chain.  Each lower chain is reached under one directory  *)
+(* of the chain above it, so "commits into d" is the constant relation     *)
+(* Commits, from P blocks to C blocks and from C blocks to G blocks.  The  *)
+(* recursion P -> C -> G is §9.10's "level by level": a run a chain's own  *)
+(* parent attributed to one of its blocks is credited work there, so it    *)
+(* reaches the next level down.                                            *)
 (*                                                                         *)
 (* A parent block is identified with the state it produced, so a child     *)
 (* block's parentState is the parent block that produced it (Anchor), or   *)
@@ -19,34 +24,45 @@ CONSTANTS
     None,       \* no block / emptyHeader
     PBlocks,    \* parent-chain blocks
     CBlocks,    \* child-chain blocks
+    GBlocks,    \* grandchild-chain blocks (may be empty)
     Parent,     \* same-chain predecessor, or None for a root
     CidRank,    \* injective; smaller = lexicographically smaller CID
     Grinds,     \* grind identities (root CIDs); a merged grind is in both chains
-    Obs,        \* [ch |-> "P" or "C", g |-> grind, b |-> location, q |-> quantity]
-    Commits,    \* set of <<p, c>>: parent block p's children index names c
-    Anchor,     \* CBlocks -> PBlocks \cup {None}: the child's parentState
+    Obs,        \* [ch |-> "P", "C" or "G", g |-> grind, b |-> location, q |-> quantity]
+    Commits,    \* set of <<u, l>>: block u's children index names l, one level down
+    Anchor,     \* lower-chain block -> block of the chain above, or None: its parentState
     Valid,      \* Blocks -> BOOLEAN: the block's own transition verdict
     Available,  \* blocks whose bodies can be obtained
     ExpectedTips,       \* [ch -> [canonical |-> b, validated |-> b]] (oracle)
-    ExpectedChildWork   \* CBlocks -> Nat (oracle, shared by every model)
+    ExpectedChildWork   \* CBlocks \cup GBlocks -> Nat (oracle, shared by every model)
 
-Chains == {"P", "C"}
-Blocks == PBlocks \cup CBlocks
-ChainBlocks(ch) == IF ch = "P" THEN PBlocks ELSE CBlocks
+Chains == {"P", "C", "G"}
+Lower(ch) == IF ch = "P" THEN "C" ELSE "G"   \* the chain ch commits into
+Up(ch) == IF ch = "G" THEN "C" ELSE "P"      \* the chain above a lower chain
+LowerChains == {"C", "G"}
+Blocks == PBlocks \cup CBlocks \cup GBlocks
+ChainBlocks(ch) == CASE ch = "P" -> PBlocks [] ch = "C" -> CBlocks [] OTHER -> GBlocks
+ChainOf(b) == CHOOSE ch \in Chains : b \in ChainBlocks(ch)
 
-ASSUME /\ None \notin Blocks /\ PBlocks \cap CBlocks = {}
-       /\ \A b \in PBlocks : Parent[b] \in PBlocks \cup {None}
-       /\ \A b \in CBlocks : Parent[b] \in CBlocks \cup {None}
+ASSUME /\ None \notin Blocks
+       /\ PBlocks \cap CBlocks = {} /\ PBlocks \cap GBlocks = {} /\ CBlocks \cap GBlocks = {}
+       /\ \A ch \in Chains : \A b \in ChainBlocks(ch) : Parent[b] \in ChainBlocks(ch) \cup {None}
        /\ \A x, y \in Blocks : x # y => CidRank[x] # CidRank[y]
        /\ \A o \in Obs : o.ch \in Chains /\ o.g \in Grinds
                          /\ o.b \in ChainBlocks(o.ch) /\ o.q \in Nat \ {0}
-       /\ Commits \subseteq PBlocks \X CBlocks
+       /\ Commits \subseteq (PBlocks \X CBlocks) \cup (CBlocks \X GBlocks)
+       \* A block's children index names one block per directory.
+       /\ \A pc, qc \in Commits : pc[1] = qc[1] => pc = qc
        \* §5.3 step 3: a committed child's parentState is its carrier's prevState.
        /\ \A pc \in Commits : Anchor[pc[2]] = Parent[pc[1]]
-       \* A merged grind reaches the child only through a carrier that
-       \* commits the child it lands on.
+       \* A merged grind lies on one proof path: at each lower level it
+       \* lands on the block its carrier above commits.
        /\ \A o1, o2 \in Obs :
-              (o1.ch = "P" /\ o2.ch = "C" /\ o1.g = o2.g) => <<o1.b, o2.b>> \in Commits
+              o1.g = o2.g =>
+                  /\ (o1.ch = "P" /\ o2.ch = "C") => <<o1.b, o2.b>> \in Commits
+                  /\ (o1.ch = "C" /\ o2.ch = "G") => <<o1.b, o2.b>> \in Commits
+                  /\ (o1.ch = "P" /\ o2.ch = "G") =>
+                         \E c \in CBlocks : <<o1.b, c>> \in Commits /\ <<c, o2.b>> \in Commits
 
 VARIABLES
     delivered,  \* observations seen
@@ -71,39 +87,52 @@ Sum(S, f) ==
 -----------------------------------------------------------------------------
 (* Parent-attributed run work (§9.10).                                     *)
 
-\* The nearest block at or above q, by parent pointer, that commits into
-\* the child directory.  Never by canonical chain.
-RECURSIVE NearestCarrier(_)
-NearestCarrier(q) ==
-    IF \E c \in CBlocks : <<q, c>> \in Commits THEN q
+\* The nearest block at or above q on chain ch, by parent pointer, that
+\* commits into the chain below.  Never by canonical chain.
+Commits1(ch, q) == \E l \in ChainBlocks(Lower(ch)) : <<q, l>> \in Commits
+RECURSIVE NearestCarrier(_, _)
+NearestCarrier(ch, q) ==
+    IF Commits1(ch, q) THEN q
     ELSE IF Parent[q] = None THEN None
-    ELSE NearestCarrier(Parent[q])
+    ELSE NearestCarrier(ch, Parent[q])
 
 GrindsAt(ch, b) == {g \in Grinds : loc[ch][g] = b}
 
 \* grindWork(P): credited work of P's own grinds.
-GrindWork(p) == Sum(GrindsAt("P", p), qty["P"])
+GrindWork(ch, p) == Sum(GrindsAt(ch, p), qty[ch])
 
-Run(p) == {q \in weighed["P"] : NearestCarrier(q) = p}
-RunWork(p) == Sum(Run(p), [q \in Run(p) |-> GrindWork(q)])
+Run(ch, p) == {q \in weighed[ch] : NearestCarrier(ch, q) = p}
 
-\* attributed(C, P, d) = runWork(P, d) - grindWork(P).  The parent is the
-\* root chain, so no run is attributed to it from above.
-Attributed(p) == RunWork(p) - GrindWork(p)
+\* runWork sums CREDITED work, grinds and attributed runs alike, so a run
+\* the chain above attributed to a block of this run reaches the chain below.
+RECURSIVE Credited(_, _), RunWork(_, _), Attributed(_, _)
+
+\* attributed(C, P, d) = runWork(P, d) - grindWork(P).
+Attributed(ch, p) == RunWork(ch, p) - GrindWork(ch, p)
+
+RunWork(ch, p) == Sum(Run(ch, p), [q \in Run(ch, p) |-> Credited(ch, q)])
+
+\* A block's credited work: its grinds, and on a lower chain the attributed
+\* run of each weighed carrier above that commits it.
+Credited(ch, q) ==
+    GrindWork(ch, q)
+    + IF ch = "P" THEN 0
+      ELSE LET us == {u \in weighed[Up(ch)] : <<u, q>> \in Commits}
+           IN  Sum(us, [u \in us |-> Attributed(Up(ch), u)])
 
 -----------------------------------------------------------------------------
 (* Weights and fork choice, per chain (§9.2-9.4, §9.9).                    *)
 
 Subtree(ch, b) == {x \in weighed[ch] : b \in AncOrSelf(x)}
 
-\* Child weight: located grinds, plus each attributed run of a weighed
-\* parent carrier committing a block in the subtree (§12.5.5).
+\* Weight: located grinds, plus each attributed run of a weighed carrier
+\* above committing a block in the subtree (§12.5.5).
 TrueCumWork(ch, b) ==
     LET grinds == Sum({g \in Grinds : loc[ch][g] \in Subtree(ch, b)}, qty[ch])
         cs     == IF ch = "P" THEN {}
-                  ELSE {pc \in Commits : pc[1] \in weighed["P"]
-                                         /\ pc[2] \in Subtree("C", b)}
-    IN  grinds + Sum(cs, [pc \in cs |-> Attributed(pc[1])])
+                  ELSE {pc \in Commits : pc[1] \in weighed[Up(ch)]
+                                         /\ pc[2] \in Subtree(ch, b)}
+    IN  grinds + Sum(cs, [pc \in cs |-> Attributed(Up(ch), pc[1])])
 
 \* W is the chain's weight table, computed once per descent.
 Better(W, x, y) ==
@@ -148,7 +177,7 @@ Continuity(b) ==
         new == Anchor[b]
     IN  IF new = None
            THEN IF Parent[b] # None /\ old = None THEN "proven" ELSE "invalid"
-        ELSE IF /\ new \in validated["P"]
+        ELSE IF /\ new \in validated[Up(ChainOf(b))]
                 /\ old \in AncOrSelf(new) \cup {None}
              THEN "proven"
         ELSE "held"
@@ -241,57 +270,60 @@ TypeOK ==
 \* the parent's executed frontier produced.  Only a non-genesis block whose
 \* predecessor commits none may commit emptyHeader (§5.1 rule 4).
 AnchoredAtExecuted ==
-    \A b \in validated["C"] :
-        \/ Anchor[b] \in validated["P"]
+    \A ch \in LowerChains : \A b \in validated[ch] :
+        \/ Anchor[b] \in validated[Up(ch)]
         \/ Anchor[b] = None /\ Parent[b] # None /\ OldAnchor(b) = None
 
 \* §5.3: along validated child history, anchors only advance along the
 \* parent's ancestry: never backward to emptyHeader, never sideways.
 AnchorsAdvance ==
-    \A b \in validated["C"] :
+    \A ch \in LowerChains : \A b \in validated[ch] :
         Parent[b] # None =>
             \/ OldAnchor(b) = None
             \/ /\ Anchor[b] # None
                /\ OldAnchor(b) \in AncOrSelf(Anchor[b])
 
-\* §9.10: each physical grind is counted once in a child block's weight.
-\* A child block's weight is built from components: each located child
-\* grind, and each attributed run, which stands for the parent grinds of
-\* that run other than the carrier's own.  The weight must equal the sum
-\* over the distinct grinds, computed from the reference above rather than
-\* from Attributed; the components must not share a grind.  (Disjointness
-\* also follows from the ASSUME that a merged grind sits at a carrier.)
+\* §9.10: each physical grind is counted once in a lower block's weight.
+\* A weight is built from components: each located grind, and each
+\* attributed run, which stands for the grinds of that run other than the
+\* carrier's own, together with what the runs attributed into that run
+\* from further up stand for ("level by level").  The weight must equal the
+\* sum over the distinct grinds, computed from the reference below rather
+\* than from Attributed; no two components, and no two entries of one,
+\* may share a grind.  (Disjointness also follows from the ASSUME that a
+\* merged grind lies on one proof path.)
 \* Reference, independent of NearestCarrier and Run: the carrier whose run
 \* holds q is the deepest committing block on q's ancestry.
-Committer(x) == \E c \in CBlocks : <<x, c>> \in Commits
-RefCarrier(q) ==
-    LET cs == {x \in AncOrSelf(q) : Committer(x)}
+Committer(ch, x) == \E l \in ChainBlocks(Lower(ch)) : <<x, l>> \in Commits
+RefCarrier(ch, q) ==
+    LET cs == {x \in AncOrSelf(q) : Committer(ch, x)}
     IN  IF cs = {} THEN None ELSE CHOOSE x \in cs : cs \subseteq AncOrSelf(x)
 
-\* The parent grinds an attributed run of p stands for: on weighed blocks
-\* whose deepest carrier is p, other than p's own.
-RunGrinds(p) ==
-    {g \in Grinds : /\ loc["P"][g] \in weighed["P"] \ {p}
-                    /\ RefCarrier(loc["P"][g]) = p}
+\* The <<chain, grind>> pairs the attributed run of carrier u on chain ch
+\* stands for, each counted at the chain whose quantity it carries there.
+RECURSIVE Stands(_, _)
+Stands(ch, u) ==
+    LET members == {q \in weighed[ch] : RefCarrier(ch, q) = u}
+        above   == IF ch = "P" THEN {}
+                   ELSE {w \in weighed[Up(ch)] : \E q \in members : <<w, q>> \in Commits}
+    IN  {<<ch, g>> : g \in {g \in Grinds : loc[ch][g] \in members \ {u}}}
+        \cup UNION {Stands(Up(ch), w) : w \in above}
 
 \* Keyed, so two components holding the same grinds stay two components.
-Components(b) ==
-    { [key |-> <<"grind", g>>, grinds |-> {g}] :
-          g \in {g \in Grinds : loc["C"][g] \in Subtree("C", b)} }
-    \cup { [key |-> <<"run", pc>>, grinds |-> RunGrinds(pc[1])] :
-          pc \in {pc \in Commits : pc[1] \in weighed["P"]
-                                  /\ pc[2] \in Subtree("C", b)} }
-
-\* A grind's credited quantity where this child counts it: at its child
-\* location if it has one, otherwise in the parent run that carries it.
-PhysicalQty(g) == IF loc["C"][g] # None THEN qty["C"][g] ELSE qty["P"][g]
+Components(ch, b) ==
+    { [key |-> <<"grind", g>>, grinds |-> {<<ch, g>>}] :
+          g \in {g \in Grinds : loc[ch][g] \in Subtree(ch, b)} }
+    \cup { [key |-> <<"run", pc>>, grinds |-> Stands(Up(ch), pc[1])] :
+          pc \in {pc \in Commits : pc[1] \in weighed[Up(ch)]
+                                  /\ pc[2] \in Subtree(ch, b)} }
 
 PhysicalWorkOnce ==
-    \A b \in weighed["C"] :
-        LET cs      == Components(b)
+    \A ch \in LowerChains : \A b \in weighed[ch] :
+        LET cs      == Components(ch, b)
             counted == UNION {c.grinds : c \in cs}
-        IN  /\ Sum(cs, [c \in cs |-> Cardinality(c.grinds)]) = Cardinality(counted)
-            /\ TrueCumWork("C", b) = Sum(counted, [g \in counted |-> PhysicalQty(g)])
+            ids     == {pg[2] : pg \in counted}
+        IN  /\ Sum(cs, [c \in cs |-> Cardinality(c.grinds)]) = Cardinality(ids)
+            /\ TrueCumWork(ch, b) = Sum(counted, [pg \in counted |-> qty[pg[1]][pg[2]]])
 
 TipsWellFormed ==
     \A ch \in Chains :
@@ -310,7 +342,8 @@ Quiescent == delivered = Obs /\ ~ENABLED Next
 \* independence (§9.4, §9.10).
 ExpectedAnswer ==
     Quiescent =>
-        /\ \A b \in CBlocks : TrueCumWork("C", b) = ExpectedChildWork[b]
+        /\ \A ch \in LowerChains : \A b \in ChainBlocks(ch) :
+               TrueCumWork(ch, b) = ExpectedChildWork[b]
         /\ \A ch \in Chains :
                /\ CanonicalTip(ch) = ExpectedTips[ch].canonical
                /\ ValidatedTip(ch) = ExpectedTips[ch].validated

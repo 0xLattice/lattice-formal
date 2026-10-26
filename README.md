@@ -112,7 +112,8 @@ the guarantee rests on.
 
 ## Hierarchy (`specs/Hierarchy.tla`)
 
-One node hosting a parent chain and one child chain: parent-attributed run work
+One node hosting a parent chain, a child chain and, optionally, a grandchild
+chain (Nexus → A → B as P → C → G): parent-attributed run work
 (§9.10), parent-state continuity (§5.3 step 6, §9.5), and fork choice with
 weighed and validated tiers on each chain. The node receives every fact in
 every order TLC can find. Reaching only one answer is the order-independence
@@ -120,14 +121,14 @@ check, so one node is enough here.
 
 | Property | Kind | Spec |
 |---|---|---|
-| `PhysicalWorkOnce`: a child block's weight equals the sum over the distinct physical grinds it rests on, computed from an independent reference (the deepest committing ancestor, not `NearestCarrier`) | invariant | §9.1, §9.10 |
+| `PhysicalWorkOnce`: a child or grandchild block's weight equals the sum over the distinct physical grinds it rests on, computed from an independent reference (the deepest committing ancestor, not `NearestCarrier`, followed up through every level) | invariant | §9.1, §9.10 |
 | `AnchoredAtExecuted`: a validated child block is anchored at a state the parent's executed frontier produced; a child genesis never at empty | invariant | §5.1 rule 4, §5.3 step 6, §9.5 |
 | `AnchorsAdvance`: along validated child history, anchors never move back to empty or sideways | invariant | §5.3 step 6, §12.5.8 |
 | `WorkMonotone`: no step lowers any block's weight on either chain, attributed runs included | action | §9.10 "only ever raised" |
 | `TipsWellFormed`, `VerdictsPermanent` | invariant, action | §9.9 |
 | `ExpectedAnswer`: quiescent tips equal hand-computed answers, and child weights equal ONE table shared by every model | oracle | §9.10, §12.5.7 |
 
-The three models differ only in the parent's verdicts and body availability,
+The four two-level models differ only in the parent's verdicts and body availability,
 and must all produce the same child weights. That is §12.5.7, that parent
 canonicity alone cannot change child weight, and §9.10's "independent of
 exclusion and of parent canonicity".
@@ -138,6 +139,7 @@ exclusion and of parent canonicity".
 | `MCHierarchy_ParentBad.cfg` | `p2` and `p4` are invalid, so the parent's canonical tip moves to `p3`. The child block anchored at the excluded `p2` is held, not excluded, and `p4` still counts in its carrier's run; nothing in the child moves |
 | `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling branch |
 | `MCHierarchy_HeldInvalid.cfg` | `c3`'s anchor is sideways (continuity held) and its transition is invalid: `c3` is excluded, not held, so the child's canonical tip moves to `c1` |
+| `MCHierarchy3_Main.cfg` | three levels: the run P attributes at a C carrier is credited work in that carrier's own run, so it reaches G (§9.10 "level by level"); P attributes both at the carrier and at a non-carrier member of its run; one grind is merged across all three levels, with a different quantity at each, and counted once at each |
 
 The shared scenario also covers:
 - a second child genesis with an empty anchor, which is invalid (§5.1 rule 4) and excluded once the other root executes;
@@ -166,6 +168,9 @@ by `ForkChoice.tla`.
 | continuity allows a sideways anchor | Main | `AnchorsAdvance` |
 | a child genesis may anchor at empty | Main | `AnchoredAtExecuted` |
 | continuity is decided before the transition (a held anchor hides a failed transition) | HeldInvalid | `ExpectedAnswer` |
+| runs sum grinds only, dropping attributed work, so nothing recurses (identical to the spec at two levels) | Hierarchy3 | `ExpectedAnswer` |
+| a run credits attributed work only at its carrier, not at its other members | Hierarchy3 | `PhysicalWorkOnce` |
+| a grandchild's attributed run also counts the child carrier's own grind | Hierarchy3 | `PhysicalWorkOnce` |
 
 ### Readings and limits
 
@@ -190,8 +195,10 @@ by `ForkChoice.tla`.
   executes only after its predecessor validated, so an equal anchor was
   already proven. The hazard lives in implementations that act on weighed
   predecessors.
-- Not modelled: multi-level recursion (Nexus → A → B, §9.10) and more than
-  one child directory.
+- Not modelled: more than one child directory per chain, and more than
+  three levels. The recursion is the same at every level, so a third level
+  is the first where it can go wrong. The three-level model has no forks,
+  verdicts or missing bodies; those are checked at two levels only.
 
 ## Trace validation (`specs/TraceForkChoice.tla`)
 
@@ -329,8 +336,8 @@ proven sub-state).
 
 ## Roadmap
 
-1. **Hierarchy depth:** a grandchild level, so attributed runs recurse
-   (§9.10), and header-rule exclusions.
+1. **Header-rule exclusions** (§9.9) in `Hierarchy.tla`, and three-level
+   implementation traces.
 2. **Lean refinement:** connect `Model.lean` to the implementation with the
    same trace approach, or extend it with Merkle proof semantics and width
    bounds.

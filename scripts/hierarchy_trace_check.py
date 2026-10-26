@@ -47,8 +47,9 @@ def model(t):
             "accepted": tla(e["accepted"]),
             "reason": tla(e.get("reason") or ""),
             "cause": tla(e.get("cause") or ""),
-            "after": "[P |-> {}, C |-> {}]".format(
-                side("P"), side("C", f", continuity |-> {fn(a['C']['continuity'])}")),
+            # Two-level traces: the grandchild chain holds nothing.
+            "after": "[P |-> {}, C |-> {}, G |-> [canonicalTip |-> \"{}\", validatedTip |-> \"{}\", weights |-> {}]]".format(
+                side("P"), side("C", f", continuity |-> {fn(a['C']['continuity'])}"), NONE, NONE, fn({})),
         }
         events.append("[" + ", ".join(f"{k} |-> {v}" for k, v in rec.items()) + "]")
     obs = ", ".join(f"[ch |-> {tla(g['ch'])}, g |-> {tla(g['label'])}, b |-> {tla(g['block'])}, q |-> {g['qty']}]"
@@ -59,6 +60,7 @@ def model(t):
 EXTENDS TraceHierarchy, TLC
 TPBlocks == {{{", ".join(tla(x) for x in p_blocks)}}}
 TCBlocks == {{{", ".join(tla(x) for x in c_blocks)}}}
+TGBlocks == {{}}
 TParent == {fn({b["label"]: b["parent"] for b in blocks})}
 TCidRank == {fn({b["label"]: b["cidRank"] for b in blocks})}
 TGrinds == {{{", ".join(tla(g) for g in grinds)}}}
@@ -67,7 +69,7 @@ TCommits == {{{commits}}}
 TAnchor == {fn(t["anchor"])}
 TValid == {fn({b["label"]: b["valid"] for b in blocks})}
 TAvailable == {{{", ".join(tla(b["label"]) for b in blocks if not b.get("withheld"))}}}
-TTips == [P |-> [canonical |-> "{NONE}", validated |-> "{NONE}"], C |-> [canonical |-> "{NONE}", validated |-> "{NONE}"]]
+TTips == [ch \\in {{"P", "C", "G"}} |-> [canonical |-> "{NONE}", validated |-> "{NONE}"]]
 TChildWork == [x \\in TCBlocks |-> 0]
 TTrace == <<
     {sep.join(events)}
@@ -82,6 +84,7 @@ CONSTANTS
     None = "{NONE}"
     PBlocks <- TPBlocks
     CBlocks <- TCBlocks
+    GBlocks <- TGBlocks
     Parent <- TParent
     CidRank <- TCidRank
     Grinds <- TGrinds
