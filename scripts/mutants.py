@@ -73,6 +73,9 @@ MUTANTS = [
     # Three levels (MCHierarchy3): caught only with a grandchild.
     ("runs-drop-attributed-work", "ExpectedAnswer", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
      '    + IF ch = "P" THEN 0\n', '    + IF TRUE THEN 0\n'),
+    ("run-credits-attributed-only-at-carrier", "PhysicalWorkOnce", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
+     "RunWork(ch, p) == Sum(Run(ch, p), [q \\in Run(ch, p) |-> Credited(ch, q)])",
+     "RunWork(ch, p) == Sum(Run(ch, p), [q \\in Run(ch, p) |-> IF q = p THEN Credited(ch, q) ELSE GrindWork(ch, q)])"),
     ("grandchild-run-counts-carrier-grind-twice", "PhysicalWorkOnce", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
      "Attributed(ch, p) == RunWork(ch, p) - GrindWork(ch, p)",
      'Attributed(ch, p) == RunWork(ch, p) - IF ch = "C" THEN 0 ELSE GrindWork(ch, p)'),

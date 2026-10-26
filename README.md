@@ -139,7 +139,7 @@ exclusion and of parent canonicity".
 | `MCHierarchy_ParentBad.cfg` | `p2` and `p4` are invalid, so the parent's canonical tip moves to `p3`. The child block anchored at the excluded `p2` is held, not excluded, and `p4` still counts in its carrier's run; nothing in the child moves |
 | `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling branch |
 | `MCHierarchy_HeldInvalid.cfg` | `c3`'s anchor is sideways (continuity held) and its transition is invalid: `c3` is excluded, not held, so the child's canonical tip moves to `c1` |
-| `MCHierarchy3_Main.cfg` | three levels: the run P attributes at a C carrier is credited work in that carrier's own run, so it reaches G (§9.10 "level by level"); one grind is merged across all three levels and counted once at each |
+| `MCHierarchy3_Main.cfg` | three levels: the run P attributes at a C carrier is credited work in that carrier's own run, so it reaches G (§9.10 "level by level"); P attributes both at the carrier and at a non-carrier member of its run; one grind is merged across all three levels, with a different quantity at each, and counted once at each |
 
 The shared scenario also covers:
 - a second child genesis with an empty anchor, which is invalid (§5.1 rule 4) and excluded once the other root executes;
@@ -169,6 +169,7 @@ by `ForkChoice.tla`.
 | a child genesis may anchor at empty | Main | `AnchoredAtExecuted` |
 | continuity is decided before the transition (a held anchor hides a failed transition) | HeldInvalid | `ExpectedAnswer` |
 | runs sum grinds only, dropping attributed work, so nothing recurses (identical to the spec at two levels) | Hierarchy3 | `ExpectedAnswer` |
+| a run credits attributed work only at its carrier, not at its other members | Hierarchy3 | `PhysicalWorkOnce` |
 | a grandchild's attributed run also counts the child carrier's own grind | Hierarchy3 | `PhysicalWorkOnce` |
 
 ### Readings and limits
@@ -196,7 +197,8 @@ by `ForkChoice.tla`.
   predecessors.
 - Not modelled: more than one child directory per chain, and more than
   three levels. The recursion is the same at every level, so a third level
-  is the first where it can go wrong.
+  is the first where it can go wrong. The three-level model has no forks,
+  verdicts or missing bodies; those are checked at two levels only.
 
 ## Trace validation (`specs/TraceForkChoice.tla`)
 
