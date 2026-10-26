@@ -14,7 +14,8 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp", "NothingPruned"}
+TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp", "NothingPruned",
+            "RevisionAdvances", "FailureLeavesGraphUnchanged", "StagedBecomesVisible"}
 
 # (name, property that must go red, config, file, old text, new text)
 MUTANTS = [
@@ -133,6 +134,32 @@ MUTANTS = [
      '    /\\ StateAt(c)[s] = "live"\n    /\\ s \\in ReceiptsAt(a)', '    /\\ StateAt(c)[s] # "spent"\n    /\\ s \\in ReceiptsAt(a)'),
     ("receipt-only-in-anchor-block", "WithdrawerCanRedeem", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
      r"    /\ s \in ReceiptsAt(a)", r"    /\ s \in pRc[a]"),
+
+    # Import, durability and recovery (Recovery.tla)
+    ("apply-before-durable", "VisibleImpliesDurable", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ up /\\ cur.p = \"durable\"\n    /\\ LET H == Apply(mem, cur.x)",
+     "    /\\ up /\\ cur.p \\in {\"checked\", \"durable\"}\n    /\\ LET H == Apply(mem, cur.x)"),
+    ("live-import-rebuilds-batch", "RecoveredEqualsLive", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ LET H == Apply(mem, cur.x)", "    /\\ LET H == Apply(mem, Rebuild[cur.x])"),
+    ("strengthening-double-counted", "ReplayIdempotent", "MCRecovery_Main.cfg", "Recovery.tla",
+     "            [G EXCEPT !.loc[x.g] = x.b,\n                      !.qty[x.g] = IF x.q > @ THEN x.q ELSE @]",
+     "            [G EXCEPT !.loc[x.g] = x.b,\n                      !.qty[x.g] = IF G.loc[x.g] = x.b THEN @ + x.q ELSE x.q]"),
+    ("restore-uses-persisted-tip", "RecoveredEqualsLive", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ tip' = CanonicalTip(mem)\n", "    /\\ tip' = ptip\n"),
+    ("revision-reset-on-recovery", "RevisionMonotone", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ rev' = Max(rev, floor)\n", "    /\\ rev' = 0\n"),
+    ("floor-recorded-only-at-staging", "RevisionMonotone", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ floor' = IF FloorPersisted THEN Max(rev, floor) ELSE floor\n", "    /\\ floor' = floor\n"),
+    ("revision-only-for-new-blocks", "RevisionAdvances", "MCRecovery_Main.cfg", "Recovery.tla",
+     "           /\\ rev' = IF Mutates(mem, H) THEN rev + 1 ELSE rev\n           /\\ tip' = CanonicalTip(H)",
+     "           /\\ rev' = IF H.held # mem.held THEN rev + 1 ELSE rev\n           /\\ tip' = CanonicalTip(H)"),
+    ("store-accepts-conflicting-metadata", "ConflictRejected", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ StoreAccepts(cur.x)\n", ""),
+    ("failed-write-keeps-applied-batch", "FailureLeavesGraphUnchanged", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ UNCHANGED <<log, floor, ptip, mem, tip, rev, up, rec, crashes, seen, lost>>",
+     "    /\\ mem' = Apply(mem, cur.x)\n    /\\ UNCHANGED <<log, floor, ptip, tip, rev, up, rec, crashes, seen, lost>>"),
+    ("exclusion-staged-never-applied-live", "StagedBecomesVisible", "MCRecovery_Main.cfg", "Recovery.tla",
+     "    /\\ up /\\ cur.p = \"durable\"\n", "    /\\ up /\\ cur.p = \"durable\" /\\ cur.x.k # \"excl\"\n"),
 ]
 
 
@@ -158,8 +185,10 @@ def run(name, expect, cfg, file, old, new):
                              capture_output=True, text=True).stdout
         if "Parsing or semantic analysis failed" in out:
             return f"MUTANT {name}: does not parse", False
+        # A liveness violation names no property; the property is checked
+        # alone, so it is the one violated.
         if re.search(rf"(Invariant|Temporal property|Action property) {expect} .*violated"
-                     rf"|{expect} is violated", out):
+                     rf"|{expect} is violated|Temporal properties were violated", out):
             return f"MUTANT {name}: killed by {expect}", True
         detail = "\n".join(l for l in out.splitlines()
                            if re.search("violated|Error|No error", l))
