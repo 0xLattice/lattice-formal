@@ -218,7 +218,9 @@ def applyBlock (dir : String) (parentReceipts : Map ReceiptKey Address)
   let deposits ← applyDeposits afterW b.actions
   let receipts ← applyReceipts s.receipts b.actions
   let balances ← applyBalances s.balances (accountActions b.actions ++ coinbase b)
-  -- §6.2: a balance beyond `UInt64` is invalid.
+  -- §6.2: a balance beyond `UInt64` is invalid. This also covers §6.2's
+  -- net-delta bound: from balances within `UInt64`, a net credit beyond it
+  -- ends beyond it, and a net debit beyond it goes negative.
   guard (balances.all (·.2 ≤ uint64Max))
   pure { balances, deposits, receipts }
 

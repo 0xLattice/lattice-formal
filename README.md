@@ -359,7 +359,8 @@ conforming:
 
 `traces/value-width-38bef1e/` holds 140 more (Lattice PR #41 at `38bef1e`),
 on a chain whose reward is 2^62 so that balances can reach the bounds, all
-conforming. 40 break one width bound, each rejected at that bound's check: a
+conforming. 40 break one width bound, and the implementation rejects each
+at that bound's check: a
 delta of `Int64.min`, an owner's net credit beyond `UInt64`, a balance beyond
 `UInt64` (by transfer or by the coinbase), and a paid coinbase beyond
 `Int64`. The valid ones sit at the bounds: deltas of ±`Int64.max`, a balance
@@ -374,7 +375,8 @@ both since adalinxx/Lattice#40, and the model has the receipt rule.
 
 ### Planted bugs
 
-`scripts/lean_mutants.py traces/value-2dfbab1 traces/value-width-38bef1e` breaks one rule of the model at
+`scripts/lean_mutants.py traces/value-2dfbab1 traces/value-width-38bef1e`
+breaks one rule of the model at
 a time. A rule a theorem depends on must make the proofs stop building, and
 every mutant must make the model disagree with the implementation's traces:
 
