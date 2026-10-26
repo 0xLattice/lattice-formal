@@ -59,6 +59,9 @@ MUTANTS = [
     ("balance-beyond-uint64", {"proofs", "traces"},
      "  guard (balances.all (·.2 ≤ uint64Max))\n", ""),
     # Rules no theorem states: only the implementation traces pin them down.
+    ("burned-coinbase-bounded", {"traces"},
+     "  | none => true\n",
+     "  | none => decide ((b.reward : Int) + fee b.actions ≤ int64Max)\n"),
     ("delta-int64-min-accepted", {"traces"},
      "d != 0 && decide (-int64Max ≤ d) && decide (d ≤ int64Max) && accountActionsValid as",
      "d != 0 && decide (d ≤ int64Max) && accountActionsValid as"),
