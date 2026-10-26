@@ -13,7 +13,7 @@ from the normative spec (Lattice `docs/spec.md`), not from the implementation:
 * §8.2 the fee rule and the coinbase credit.
 
 * the width bounds that decide validity: an account delta is an `Int64`
-  other than `Int64.min` (§3.6), the coinbase credit fits a positive
+  other than `Int64.min` (§3.6), the coinbase credit fits an
   `Int64` (§5.2 step 11), and a balance fits a `UInt64` (§6.2).
 
 Not modelled: general key-value actions and nonces (they move no value),

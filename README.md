@@ -363,12 +363,64 @@ transition from the spec:
 | `receipt_provenance`: every receipt was inserted by a receipt action | §6.5 |
 | `applyBlock_wf`: sub-states keep distinct keys and no zero balance | §6.2 |
 | `balances_fit`, `coinbase_fits`: every balance fits a `UInt64`, and a paid coinbase an `Int64` | §6.2, §5.2 |
+| `receipt_value_provenance`, `deposit_value_provenance`: after a valid block, every receipt entry (with its withdrawer) and every live deposit (with its amount) was already there or was inserted by an action of the block | §6.4, §6.5 |
+| `receipt_chain_provenance`, `deposit_chain_provenance`: the same over a valid run from empty receipt (deposit) state: each entry comes from an action in some block of the run | §6.4, §6.5 |
+| `swap_atomic`: every withdrawal in a valid child run is backed by a receipt in a valid parent block whose account actions include the withdrawer's debit and the demander's credit (gross, before netting), and by a deposit of exactly the withdrawn amount in a strictly earlier child block | §6.4, §6.5, §8.1, §12.4 |
+| `withdrawal_once`, `receipt_once`, `payment_releases_once`: across a valid run, no two withdrawal actions release the same deposit, no two receipt actions record the same payment, and, within one child run, no two withdrawals consume the same parent receipt | §8.3, §12.4 |
 
 ```sh
 cd lean && lake build                    # the proofs
 lake env lean LatticeProofs/Axioms.lean  # only propext, Classical.choice, Quot.sound
 python3 scripts/lean_mutants.py          # from the repo root
 ```
+
+### Cross-chain swaps (`LatticeProofs/Swap.lean`)
+
+A swap locks value on a child chain and pays for it on the parent. On the
+child at directory `dir`, a deposit locks `amountDeposited` at
+`(demander, amountDemanded, nonce)`. On the parent, a receipt naming the
+withdrawer is inserted at `(dir, demander, amountDemanded, nonce)` and
+moves `amountDemanded` from the withdrawer to the demander. Back on the
+child, a withdrawal that the receipt in its `parentState` names releases the
+deposit and leaves the spent marker.
+
+Atomicity here is the safety half: no deposit is released without the
+payment. `swap_atomic` takes a valid parent run from empty receipts, a valid
+child run from a well-formed state with no deposits, and the hypothesis that
+the withdrawing child block's `parentState` receipts are those of some state
+the parent run reached. Then each withdrawal in that block has its receipt in a valid parent
+block, that block's account actions include the withdrawer's debit and the
+demander's credit, and a strictly earlier child block made the deposit
+(withdrawals see only `prevState`, so a deposit cannot be withdrawn in its own
+block).
+
+The payment is stated gross, not net: the derived debit `(withdrawer,
+-amountDemanded)` and credit `(demander, amountDemanded)` are among the
+block's account actions, but deltas net per owner (§6.2), so other actions in
+the same block may cancel them. Debiting the demander that way needs the
+demander's signature, which is not modelled.
+
+Uniqueness is counted per action position, so two copies of one action count
+twice. `withdrawal_once`: within one valid run, no two withdrawals release the
+same deposit. `receipt_once`: within one valid run, no two receipts record the
+same payment. `payment_releases_once` is `withdrawal_once` mapped through the
+injective map from a deposit key to the receipt key it consumes: within one
+child run, each parent receipt releases at most one deposit.
+
+Not covered:
+- **Signatures.** Nothing in the model ties the withdrawal's credit to the
+  withdrawer; the receipt names the withdrawer, but who the withdrawn value
+  goes to is the transaction's account actions, unconstrained here.
+- **Liveness.** That a paid receipt can always be withdrawn on the child
+  (the deposit is still live, the child sees the parent state) is not
+  proved.
+- **Anchor validity and reorgs.** That a child's `parentState` is a state of
+  the parent's chain is the hypothesis above, not a theorem here; the TLA+
+  hierarchy model covers anchoring (§5.3 step 6, §9.5). "Paid in a valid
+  parent block" means on the parent branch the child anchors to, which may
+  not be canonical: parent canonicity does not enter (§9.9). If that branch
+  is abandoned, the payment reverts, and the child withdrawal goes with it
+  only through reorg coupling (§5.3, fork choice), which is not proved here.
 
 ### Refinement by traces
 
@@ -440,10 +492,15 @@ break the proofs:
 | a negative balance is clamped | break | disagree |
 | a paid coinbase is unbounded | break | disagree |
 | a balance may exceed `UInt64` | break | disagree |
+| a withdrawal checks the child's own receipts, not `parentState`'s | break | disagree |
+| a receipt key drops the directory | break | disagree |
+| a receipt overwrites an existing one | break | disagree |
+| a receipt debits the withdrawer but credits no demander | break | disagree |
+| a withdrawal accepts a receipt naming any withdrawer | break | disagree |
+| deposits applied before withdrawals (`swap_atomic`'s "strictly earlier") | break | disagree |
 | a burned coinbase is bounded too | (no theorem states it) | disagree |
 | a delta of `Int64.min` is accepted | (no theorem states it) | disagree |
 | a receipt with zero demand is accepted | (no theorem states it) | disagree |
-| deposits applied before withdrawals | (no theorem states it) | disagree |
 | balances move delta by delta in action order, not netted | (no theorem states it) | disagree |
 | a deletion skips the collapse | break | (not traced) |
 | a node's digest ignores its prefix | break | (not traced) |
