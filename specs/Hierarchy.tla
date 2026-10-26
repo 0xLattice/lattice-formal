@@ -187,12 +187,16 @@ CanExecute(ch, b) ==
     /\ b \in Available
     /\ Parent[b] \in validated[ch] \cup {None}
 
-\* The child's own verdict: continuity first, then its transition.
+\* A block's own verdict.  A failed transition (§5.3 step 7) is invalid
+\* under any continuity outcome, so it is a verdict even while the anchor's
+\* continuity (step 6) is held; a valid transition still needs a proven
+\* anchor.
 Verdict(ch, b) ==
-    IF ch = "P" THEN IF Valid[b] THEN "valid" ELSE "invalid"
+    IF ~Valid[b] THEN "invalid"
+    ELSE IF ch = "P" THEN "valid"
     ELSE CASE Continuity(b) = "invalid" -> "invalid"
            [] Continuity(b) = "held"    -> "held"
-           [] OTHER -> IF Valid[b] THEN "valid" ELSE "invalid"
+           [] OTHER -> "valid"
 
 ValidateOk(ch, b) ==
     /\ CanExecute(ch, b)

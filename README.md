@@ -137,6 +137,7 @@ exclusion and of parent canonicity".
 | `MCHierarchy_Main.cfg` | the parent's canonical tip (`p2`) is on a different branch from the child's anchor (`p1`); the child still validates there |
 | `MCHierarchy_ParentBad.cfg` | `p2` and `p4` are invalid, so the parent's canonical tip moves to `p3`. The child block anchored at the excluded `p2` is held, not excluded, and `p4` still counts in its carrier's run; nothing in the child moves |
 | `MCHierarchy_P1Gap.cfg` | `p1`'s body never arrives: the child block anchored there is held, not invalid, and the child acts on its sibling branch |
+| `MCHierarchy_HeldInvalid.cfg` | `c3`'s anchor is sideways (continuity held) and its transition is invalid: `c3` is excluded, not held, so the child's canonical tip moves to `c1` |
 
 The shared scenario also covers:
 - a second child genesis with an empty anchor, which is invalid (§5.1 rule 4) and excluded once the other root executes;
@@ -164,9 +165,16 @@ by `ForkChoice.tla`.
 | continuity accepts a weighed but unexecuted anchor | P1Gap | `AnchoredAtExecuted` |
 | continuity allows a sideways anchor | Main | `AnchorsAdvance` |
 | a child genesis may anchor at empty | Main | `AnchoredAtExecuted` |
+| continuity is decided before the transition (a held anchor hides a failed transition) | HeldInvalid | `ExpectedAnswer` |
 
 ### Readings and limits
 
+- **A failed transition is a verdict before continuity is answered.** §5.3
+  orders continuity (step 6) before the transition (step 7), but the
+  transition is checked against the block's declared `parentState`, so a
+  failure there makes the block invalid whatever continuity concludes. The
+  model excludes it even while its anchor is held; Lattice does the same, and
+  the spec says so since adalinxx/Lattice#36.
 - **A sideways anchor is held, never a verdict.** §9.5: a child "anchoring
   elsewhere is anchoring at something this parent has not checked, and the
   correct answer is the retriable 'not proven here', not a verdict". State

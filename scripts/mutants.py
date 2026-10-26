@@ -52,6 +52,16 @@ MUTANTS = [
      r"""        ELSE IF /\ new \in validated["P"]
                 /\ old \in AncOrSelf(new) \cup {None}""",
      r"""        ELSE IF /\ new \in validated["P"]"""),
+    ("continuity-before-transition", "ExpectedAnswer", "MCHierarchy_HeldInvalid.cfg", "Hierarchy.tla",
+     '    IF ~Valid[b] THEN "invalid"\n'
+     '    ELSE IF ch = "P" THEN "valid"\n'
+     '    ELSE CASE Continuity(b) = "invalid" -> "invalid"\n'
+     '           [] Continuity(b) = "held"    -> "held"\n'
+     '           [] OTHER -> "valid"',
+     '    IF ch = "P" THEN IF Valid[b] THEN "valid" ELSE "invalid"\n'
+     '    ELSE CASE Continuity(b) = "invalid" -> "invalid"\n'
+     '           [] Continuity(b) = "held"    -> "held"\n'
+     '           [] OTHER -> IF Valid[b] THEN "valid" ELSE "invalid"'),
     ("child-genesis-may-anchor-empty", "AnchoredAtExecuted", "MCHierarchy_Main.cfg", "Hierarchy.tla",
      r"THEN IF Parent[b] # None /\ old = None THEN", "THEN IF old = None THEN"),
     ("nearest-carrier-skips-itself", "PhysicalWorkOnce", "MCHierarchy_Main.cfg", "Hierarchy.tla",
