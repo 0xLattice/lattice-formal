@@ -599,4 +599,165 @@ theorem Kids.descend_complete (ho : StrictOrder K) (o : Op V) :
       cases hr : rest.descend o c rr <;> simp_all
 end
 
+/-! ## Uniqueness: a canonical trie is a function of its map -/
+
+theorem found_prefix {p k : List K} {v : Option V} {ks : Kids K V D} {x : V}
+    (h : (Trie.node p v ks).lookup k = .found x) : ∃ r, k = p ++ r := by
+  cases hk : dropPrefix p k with
+  | none => rw [lookup_node_none hk] at h; cases h
+  | some r => exact ⟨r, dropPrefix_eq_some.1 hk⟩
+
+theorem head_of_found {c : K} {t : Trie K V D} (ht : t.HeadIs c) {k : List K} {x : V}
+    (h : t.lookup k = .found x) : ∃ z, k = c :: z := by
+  cases k with
+  | nil => rw [Trie.lookup_headIs ht (by simp)] at h; cases h
+  | cons a z =>
+    by_cases ha : a = c
+    · exact ⟨z, by rw [ha]⟩
+    · rw [Trie.lookup_headIs ht (by simpa using ha)] at h; cases h
+
+mutual
+theorem Trie.exists_found : ∀ {t : Trie K V D}, t.Canon → ∃ k x, t.lookup k = .found x
+  | .stub _, h => h.elim
+  | .node p v ks, ⟨_, hv, hks⟩ => by
+    cases v with
+    | some x => exact ⟨p, x, lookup_node_nil (dropPrefix_eq_some.2 (List.append_nil _).symm)⟩
+    | none =>
+      have hne : ks ≠ .nil := by
+        rintro rfl; simp [Kids.length] at hv
+      obtain ⟨c, z, x, hx⟩ := Kids.exists_found hks hne
+      exact ⟨p ++ c :: z, x, by rw [lookup_node_cons (dropPrefix_append_self _ _)]; exact hx⟩
+theorem Kids.exists_found :
+    ∀ {ks : Kids K V D}, ks.Canon → ks ≠ .nil → ∃ c z x, ks.lookup c z = .found x
+  | .nil, _, h => absurd rfl h
+  | .cons c t rest, hc, _ => by
+    obtain ⟨k, x, hx⟩ := Trie.exists_found hc.2.1
+    obtain ⟨z, rfl⟩ := head_of_found hc.1 hx
+    exact ⟨c, z, x, by simp [Kids.lookup, hx]⟩
+end
+
+/-- A value-less canonical node holds two keys that part right after its prefix. -/
+theorem two_found (ho : StrictOrder K) {p : List K} {ks : Kids K V D}
+    (hc : (Trie.node p none ks).Canon) :
+    ∃ a za xa b zb xb, a ≠ b ∧ (Trie.node p none ks).lookup (p ++ a :: za) = .found xa ∧
+      (Trie.node p none ks).lookup (p ++ b :: zb) = .found xb := by
+  obtain ⟨_, hv, hks⟩ := hc
+  match ks, hv, hks with
+  | .nil, hv, _ => simp [Kids.length] at hv
+  | .cons _ _ .nil, hv, _ => simp [Kids.length] at hv
+  | .cons a ta (.cons b tb rest), _, hks =>
+    have hab : a ≠ b := fun e => ho.irrefl a (by
+      have := hks.2.2.2 b (by simp [Kids.keys]); rwa [← e] at this)
+    obtain ⟨ka, xa, hxa⟩ := Trie.exists_found hks.2.1
+    obtain ⟨za, rfl⟩ := head_of_found hks.1 hxa
+    obtain ⟨kb, xb, hxb⟩ := Trie.exists_found hks.2.2.1.2.1
+    obtain ⟨zb, rfl⟩ := head_of_found hks.2.2.1.1 hxb
+    refine ⟨a, za, xa, b, zb, xb, hab, ?_, ?_⟩
+    · rw [lookup_node_cons (dropPrefix_append_self _ _)]; simp [Kids.lookup, hxa]
+    · rw [lookup_node_cons (dropPrefix_append_self _ _)]; simp [Kids.lookup, hab, hxb]
+
+/-- Two canonical nodes with the same reads: neither prefix strictly extends
+the other. -/
+theorem prefix_not_strict (ho : StrictOrder K) {p1 p2 : List K} {v1 v2 : Option V}
+    {ks1 ks2 : Kids K V D} (hc1 : (Trie.node p1 v1 ks1).Canon)
+    (hl : ∀ k, (Trie.node p1 v1 ks1).lookup k = (Trie.node p2 v2 ks2).lookup k)
+    {x : K} {d : List K} (hp : p2 = p1 ++ x :: d) : False := by
+  cases v1 with
+  | some y =>
+    have h := hl p1
+    rw [lookup_node_nil (dropPrefix_eq_some.2 (List.append_nil _).symm)] at h
+    obtain ⟨r, hr⟩ := found_prefix h.symm
+    have := congrArg List.length hr
+    subst hp; simp at this
+  | none =>
+    obtain ⟨a, za, xa, b, zb, xb, hab, ha, hb⟩ := two_found ho hc1
+    rw [hl] at ha hb
+    obtain ⟨ra, hra⟩ := found_prefix ha
+    obtain ⟨rb, hrb⟩ := found_prefix hb
+    subst hp
+    simp only [List.append_assoc, List.append_right_inj, List.cons_append, List.cons.injEq] at hra hrb
+    exact hab (hra.1.trans hrb.1.symm)
+
+mutual
+theorem Trie.canon_unique (ho : StrictOrder K) :
+    ∀ {t1 t2 : Trie K V D}, t1.Canon → t2.Canon → (∀ k, t1.lookup k = t2.lookup k) → t1 = t2
+  | .stub _, _, h, _, _ => h.elim
+  | .node _ _ _, .stub _, _, h, _ => h.elim
+  | .node p1 v1 ks1, .node p2 v2 ks2, hc1, hc2, hl => by
+    have hp : p1 = p2 := by
+      obtain ⟨k, x, hx⟩ := Trie.exists_found hc1
+      obtain ⟨r1, hr1⟩ := found_prefix hx
+      rw [hl] at hx
+      obtain ⟨r2, hr2⟩ := found_prefix hx
+      rw [hr1] at hr2
+      rcases List.append_eq_append_iff.1 hr2 with ⟨as, h1, -⟩ | ⟨bs, h1, -⟩
+      · cases as with
+        | nil => simpa using h1.symm
+        | cons x d => exact (prefix_not_strict ho hc1 hl h1).elim
+      · cases bs with
+        | nil => simpa using h1
+        | cons x d => exact (prefix_not_strict ho hc2 (fun k => (hl k).symm) h1).elim
+    subst hp
+    have hv : v1 = v2 := by
+      have h := hl p1
+      rw [lookup_node_nil (dropPrefix_eq_some.2 (List.append_nil _).symm),
+        lookup_node_nil (dropPrefix_eq_some.2 (List.append_nil _).symm)] at h
+      exact Read.ofOption_inj h
+    subst hv
+    have hk := Kids.canon_unique ho hc1.2.2 hc2.2.2 (fun c z => by
+      have h := hl (p1 ++ c :: z)
+      rwa [lookup_node_cons (dropPrefix_append_self _ _),
+        lookup_node_cons (dropPrefix_append_self _ _)] at h)
+    rw [hk]
+theorem Kids.canon_unique (ho : StrictOrder K) :
+    ∀ {ks1 ks2 : Kids K V D}, ks1.Canon → ks2.Canon →
+      (∀ c z, ks1.lookup c z = ks2.lookup c z) → ks1 = ks2
+  | .nil, .nil, _, _, _ => rfl
+  | .nil, .cons _ _ _, _, hc2, hl => by
+    obtain ⟨c, z, x, hx⟩ := Kids.exists_found hc2 (by simp)
+    rw [← hl] at hx; cases hx
+  | .cons _ _ _, .nil, hc1, _, hl => by
+    obtain ⟨c, z, x, hx⟩ := Kids.exists_found hc1 (by simp)
+    rw [hl] at hx; cases hx
+  | .cons c1 t1 r1, .cons c2 t2 r2, hc1, hc2, hl => by
+    -- The least characters agree: the smaller one would be missing from the other side.
+    have least : ∀ {a b : K} {ta tb : Trie K V D} {ra rb : Kids K V D},
+        (Kids.cons a ta ra).Canon → (Kids.cons b tb rb).Canon →
+        (∀ c z, (Kids.cons a ta ra).lookup c z = (Kids.cons b tb rb).lookup c z) → ¬ a < b := by
+      intro a b ta tb ra rb ha hb hl hab
+      have hn : a ∉ (Kids.cons b tb rb).keys := by
+        simp only [Kids.keys, List.mem_cons, not_or]
+        refine ⟨fun e => ho.irrefl a (by rw [e] at hab ⊢; exact hab), fun hm => ?_⟩
+        exact ho.irrefl a (ho.trans hab (hb.2.2.2 a hm))
+      obtain ⟨k, x, hx⟩ := Trie.exists_found ha.2.1
+      obtain ⟨z, rfl⟩ := head_of_found ha.1 hx
+      have h := hl a z
+      rw [Kids.lookup_not_mem hn] at h
+      simp [Kids.lookup, hx] at h
+    have hc : c1 = c2 := by
+      rcases ho.total c1 c2 with h | h | h
+      · exact (least hc1 hc2 hl h).elim
+      · exact h
+      · exact (least hc2 hc1 (fun c z => (hl c z).symm) h).elim
+    subst hc
+    have ht : t1 = t2 := Trie.canon_unique ho hc1.2.1 hc2.2.1 (fun k => by
+      by_cases hk : k.head? = some c1
+      · obtain ⟨z, rfl⟩ : ∃ z, k = c1 :: z := by
+          cases k with
+          | nil => simp at hk
+          | cons a z => simp at hk; exact ⟨z, by rw [hk]⟩
+        have h := hl c1 z
+        simpa [Kids.lookup] using h
+      · rw [Trie.lookup_headIs hc1.1 hk, Trie.lookup_headIs hc2.1 hk])
+    subst ht
+    have hr : r1 = r2 := Kids.canon_unique ho hc1.2.2.1 hc2.2.2.1 (fun c z => by
+      by_cases hcc : c1 = c
+      · subst hcc
+        rw [Kids.lookup_not_mem (Kids.Canon.not_mem ho hc1),
+          Kids.lookup_not_mem (Kids.Canon.not_mem ho hc2)]
+      · have h := hl c z
+        simpa [Kids.lookup, hcc] using h)
+    rw [hr]
+end
+
 end Lattice.Merkle
