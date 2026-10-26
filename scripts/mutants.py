@@ -113,6 +113,26 @@ MUTANTS = [
     ("grandchild-run-counts-carrier-grind-twice", "PhysicalWorkOnce", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
      "Attributed(ch, p) == RunWork(ch, p) - GrindWork(ch, p)",
      'Attributed(ch, p) == RunWork(ch, p) - IF ch = "C" THEN 0 ELSE GrindWork(ch, p)'),
+
+    # Swaps under forks and reorgs (SwapReorg.tla)
+    ("withdrawal-reads-any-known-receipt", "WithdrawalBackedOnAnchorBranch", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     r"    /\ s \in ReceiptsAt(a)", r"    /\ s \in UNION {pRc[q] : q \in pMade}"),
+    ("withdrawal-reads-parent-canonical-tip", "WithdrawalBackedOnAnchorBranch", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     r"    /\ s \in ReceiptsAt(a)", r"    /\ s \in ReceiptsAt(tipP)"),
+    ("anchor-weighed-not-executed", "WithdrawalBackedOnAnchorBranch", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     r"    /\ a \in Frontier", r"    /\ a \in pMade"),
+    ("anchor-executed-off-frontier", "WithdrawalBackedOnAnchorBranch", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     r"    /\ a \in Frontier", r"    /\ a \in pExec"),
+    ("anchor-moves-sideways", "DemanderSafeIfAnchorCanonical", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     r"    /\ cAnc[c] \in PLine(a)", r"    /\ cAnc[c] \in pMade"),
+    ("replay-drops-spent-marker", "SpentIffReleased", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     '[s \\in Swaps |-> IF s \\in wd THEN "spent"', '[s \\in Swaps |-> IF s \\in wd THEN "none"'),
+    ("withdrawal-accepts-spent-marker", "NoDoubleRelease", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     '    /\\ StateAt(c)[s] = "live"\n    /\\ s \\in ReceiptsAt(a)', '    /\\ StateAt(c)[s] # "none"\n    /\\ s \\in ReceiptsAt(a)'),
+    ("withdrawal-skips-deposit-proof", "ReleaseHasDeposit", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     '    /\\ StateAt(c)[s] = "live"\n    /\\ s \\in ReceiptsAt(a)', '    /\\ StateAt(c)[s] # "spent"\n    /\\ s \\in ReceiptsAt(a)'),
+    ("receipt-only-in-anchor-block", "WithdrawerCanRedeem", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+     r"    /\ s \in ReceiptsAt(a)", r"    /\ s \in pRc[a]"),
 ]
 
 

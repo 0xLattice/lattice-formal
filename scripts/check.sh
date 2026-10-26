@@ -5,7 +5,8 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 failures=0
 for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
            MCHierarchy_Main.cfg MCHierarchy_ParentBad.cfg MCHierarchy_P1Gap.cfg MCHierarchy_HeldInvalid.cfg MCHierarchy_HeaderBad.cfg \
-           MCHierarchy3_Main.cfg MCHierarchyFork_Main.cfg; do
+           MCHierarchy3_Main.cfg MCHierarchyFork_Main.cfg \
+           MCSwapReorg_Main.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
@@ -15,7 +16,10 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
 done
 # Witnesses: each must FAIL, showing the scenario a property quantifies over
 # is reachable, so the property is not vacuous.
-for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBackedGrandchildFork"; do
+for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBackedGrandchildFork" \
+            "MCSwapReorg_WParentReorg.cfg NaiveCanonicalBacking" "MCSwapReorg_WChildReorg.cfg PaidImpliesReleased" \
+            "MCSwapReorg_WTwoBranches.cfg ReleasedOnOneBranch" "MCSwapReorg_WRedeem.cfg NoRedeemAfterReorg" \
+            "MCSwapReorg_WDemanderSafe.cfg NoSafeReleaseBesideParentFork"; do
   set -- $pair
   out="$("$root/scripts/tlc.sh" "$1" 2>&1)"
   if grep -q "Invariant $2 is violated" <<<"$out"; then
