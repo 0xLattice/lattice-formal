@@ -1049,11 +1049,12 @@ Found while proving; Lattice is not changed here.
 - **"One half-life of drift is exactly one doubling"** holds only inside two
   bounds. Past 224 halvings `multiplyDividingSaturating` saturates
   `remainder * numerator`, and from 240 halvings the function returns 1
-  outright, so the target is harder than `⌊A / 2^k⌋`, by up to a factor of
-  about 2 at 225–239 halvings, and 1 against up to 65,535 from 240 on
-  (`targetOf_harden_deep_strict`). The code comments' "never saturates early"
+  outright, so the target is harder than `⌊A / 2^k⌋`, by a factor that
+  grows with `k` and depends on the anchor: 1 against 65,535 at 239
+  halvings from an anchor of `2^255 - 1`, and from 240 on 1 against up to
+  65,535 (`targetOf_harden_deep_strict`). The code comments' "never saturates early"
   and "the true value has already rounded to nothing" are both off there.
-  The drift is also clamped to `2^47 - 1` ms (about 4,462 years) before
+  The drift is also clamped to `2^47 - 1` ms (about 4,460 Julian years) before
   scaling; a half-life longer than `2^47 / 256` ms (about 17 years) lets the
   clamp change unsaturated results, and with `halfLife · targetBlockTime =
   2^62` one half-life of drift moves the target by `1 + 2^-16`
@@ -1063,9 +1064,10 @@ Found while proving; Lattice is not changed here.
 - **"Never reaches zero"** needs a nonzero anchor target or a schedule:
   with the block at the anchor's height, or `halfLife · targetBlockTime = 0`,
   the anchor's target is returned unchanged, zero included
-  (`result_zero_unscheduled`). Validation cannot reach that case, since a
-  proof-of-work target is nonzero, but `halfLife = 0` is an unmentioned
-  fixed-difficulty mode.
+  (`result_zero_unscheduled`). Validation cannot reach that case: a
+  proof-of-work target is nonzero, and spec validity (§10.4,
+  `ChainSpec.isValid`) requires `halfLife > 0` and `targetBlockTime > 0`,
+  whose product saturates rather than wrapping to 0.
 - **Monotone in heights** only above the anchor (`mono_height_needs_schedule`).
 - **The first paragraph of §5.5** says `B.nextTarget` "is recomputed from the
   *actual* `B.target`, so overachieving ratchets the schedule harder". The

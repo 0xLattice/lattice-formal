@@ -640,10 +640,12 @@ theorem targetOf_harden_deep {A : Nat} {k : Nat} (hk : 225 ≤ k) :
 /-- And strictly harder there: from an anchor at the maximum, 225 halvings
 give less than `⌊max / 2^225⌋`, because `remainder * numerator` saturates in
 `multiplyDividingSaturating`; from 240 halvings on the result is 1 although
-`⌊max / 2^240⌋ = 65535`. -/
+`⌊max / 2^240⌋ = 65535`. Below the maximum the gap grows with the halvings:
+from `2^255 - 1`, 239 halvings give 1 against `⌊A / 2^239⌋ = 65535`. -/
 theorem targetOf_harden_deep_strict :
     targetOf max256 (-(65536 * 225)) < max256 / 2 ^ 225 ∧
-    targetOf max256 (-(65536 * 240)) = 1 ∧ max256 / 2 ^ 240 = 65535 := by decide
+    targetOf max256 (-(65536 * 240)) = 1 ∧ max256 / 2 ^ 240 = 65535 ∧
+    targetOf (2 ^ 255 - 1) (-(65536 * 239)) = 1 ∧ (2 ^ 255 - 1) / 2 ^ 239 = 65535 := by decide
 
 /-- §5.5 "one half-life of drift is exactly one doubling", as the
 implementation computes it: `k` half-lives of drift (inside the drift
