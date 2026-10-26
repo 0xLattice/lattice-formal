@@ -7,3 +7,4 @@ import LatticeProofs.MerkleCanon
 import LatticeProofs.MerkleWitness
 import LatticeProofs.MerkleRoot
 import LatticeProofs.MerkleProofs
+import LatticeProofs.Swap

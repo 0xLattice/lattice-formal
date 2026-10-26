@@ -1,5 +1,6 @@
 import LatticeProofs.Conservation
 import LatticeProofs.MerkleProofs
+import LatticeProofs.Swap
 
 open Lattice in
 section
@@ -20,6 +21,14 @@ section
 #print axioms receipt_provenance
 #print axioms balances_fit
 #print axioms coinbase_fits
+#print axioms receipt_value_provenance
+#print axioms deposit_value_provenance
+#print axioms receipt_chain_provenance
+#print axioms deposit_chain_provenance
+#print axioms swap_atomic
+#print axioms withdrawal_once
+#print axioms receipt_once
+#print axioms payment_releases_once
 end
 
 open Lattice.Merkle in
