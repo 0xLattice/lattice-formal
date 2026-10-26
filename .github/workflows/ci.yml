@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [MCMain.cfg, MCGap.cfg, MCTie.cfg]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Model-check ${{ matrix.config }}
+        run: |
+          scripts/tlc.sh ${{ matrix.config }} | tee tlc.log
+          grep -q "No error has been found" tlc.log
+
+  mutants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Planted bugs must be caught
+        run: scripts/mutants.sh
