@@ -197,9 +197,6 @@ def receiptPreimage (k : ReceiptKey) : Text := receiptDomain ++ receiptText k
 /-- `ReceiptKey.storageKey`: `hex(SHA256(domain || ReceiptKey))`. -/
 def receiptPath (H : Text → Nat) (k : ReceiptKey) : Text := hex64 (H (receiptPreimage k))
 
-/-- The receipt preimages of keys the grammar admits. -/
-def ReceiptInput (x : Text) : Prop := ∃ k : ReceiptKey, ValidDirectory k.directory.toList ∧ x = receiptPreimage k
-
 /-- The receipt keys in play for one block (`S`: the keys of `prevState`'s
 receipt map and of the block's receipt actions) that meet the directory
 grammar. -/
@@ -209,5 +206,9 @@ def InPlay (S : List ReceiptKey) (k : ReceiptKey) : Prop :=
 /-- Their receipt preimages: a finite set. -/
 def InPlayInput (S : List ReceiptKey) (x : Text) : Prop :=
   ∃ k, InPlay S k ∧ x = receiptPreimage k
+
+/-- The other hashed texts in play (`T`): state keys and key texts, which
+the grammar keeps visible ASCII. -/
+def TextInPlay (T : List Text) (s : Text) : Prop := VisibleAscii s ∧ s ∈ T
 
 end Lattice.Keys

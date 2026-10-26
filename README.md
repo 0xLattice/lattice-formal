@@ -924,9 +924,8 @@ digits, `%0.16lx` four times.
 | `cidText_valid`: a canonical address meets the account grammar (visible ASCII, no `/`) | §3.5, §11.1 |
 | `depositText_inj`: the `DepositKey` text is injective for every demander | §3.7 |
 | `receiptText_inj`, `receiptText_inj_of_demander`, `receiptText_collision`: the `ReceiptKey` text is injective when the directory has no `/`, and also when the demander has none; with neither ban, `a/b`,`c` and `a`,`b/c` collide | §3.5, §3.7 |
-| `receiptPath_inj`: on grammar-valid keys the receipt path is injective, unless SHA-256 collides on two receipt preimages (`NoCollision`, as in the Merkle proofs) | §3.5 |
-| `receiptPath_injOn`, `receipts_commit_path`, `receipts_commit_path_or_collision`: the receipt sub-state commits through `ReceiptKey.storageKey` itself, unless SHA-256 collides among the receipt preimages in play or the trie nodes touched | §3.5, §6.5, §12.1 |
-| `receiptPreimage_ne`, `receiptPath_separated`: no receipt preimage is visible-ASCII text, so a receipt path is never the hash of a state key or key text, unless SHA-256 collides between them; the domain's `0x00` is what does it | §3.5 |
+| `receiptPath_injOn`, `receipts_commit_path`, `receipts_commit_path_or_collision`, `inPlay_noCollision_example`: the receipt path is injective on the grammar-valid keys in play, and the receipt sub-state commits through `ReceiptKey.storageKey` itself to exactly the receipts on the keys in play (`S`, which should hold every key of the map and of the block), unless SHA-256 collides among those keys' preimages or the trie nodes touched | §3.5, §6.5, §12.1 |
+| `receiptPreimage_ne`, `receiptPath_separated`, `separated_noCollision_example`: no receipt preimage is visible-ASCII text, so a receipt path in play is never the hash of a state key or key text in play, unless SHA-256 collides among those finitely many inputs; the domain's `0x00` is what does it | §3.5 |
 
 Readings:
 - **Either `/` ban keeps `ReceiptKey` injective.** §3.5 says directories are
@@ -938,6 +937,11 @@ Readings:
   the theorem requires it only to state the format. The `0x01` tag is what
   separates absent from present-empty; a canonical address is never empty,
   so on structurally valid blocks the tag is defence in depth.
+- **Hashing hypotheses are finite.** Every `NoCollision` in these files
+  ranges over the finitely many inputs in play (the keys `S`, the texts
+  `T`), never over all receipt preimages: those are infinitely many and
+  distinct, so with a 256-bit `H` such a hypothesis is contradictory. Each
+  has a satisfiability witness.
 - **`receipts_commit` through the real path.** `receipts_commit` assumed
   `Function.Injective` of the storage-key encoding, which no hash satisfies
   (a 256-bit digest of unbounded keys collides), so the theorem was vacuous

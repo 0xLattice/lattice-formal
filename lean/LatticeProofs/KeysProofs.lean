@@ -375,16 +375,6 @@ theorem receiptText_collision :
 
 /-! ## The receipt-state path (§3.5) -/
 
-/-- §3.5: on grammar-valid keys the receipt path is injective, unless `H`
-(256-bit) collides on two receipt preimages. -/
-theorem receiptPath_inj {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256)
-    (hH : NoCollision H ReceiptInput ReceiptInput) {k k' : ReceiptKey}
-    (hk : ValidDirectory k.directory.toList) (hk' : ValidDirectory k'.directory.toList)
-    (h : receiptPath H k = receiptPath H k') : k = k' := by
-  have := hH _ _ ⟨k, hk, rfl⟩ ⟨k', hk', rfl⟩ (hex64_inj (hw _) (hw _) h)
-  simp only [receiptPreimage, List.append_cancel_left_eq] at this
-  exact receiptText_inj hk hk' this
-
 /-- §3.5, domain separation: no receipt preimage is visible-ASCII text, so
 none is any state key or key text (each of which the grammar keeps
 visible ASCII); the `0x00` in the domain is what does it. -/
@@ -396,13 +386,14 @@ theorem receiptPreimage_ne {k : ReceiptKey} {s : Text} (hs : VisibleAscii s) :
   have := hs.2 _ this
   revert this; decide
 
-/-- Hence a receipt path is never the hash of a visible-ASCII text, unless `H`
-collides between the two. -/
+/-- Hence a receipt path in play is never the hash of a visible-ASCII text in
+play, unless `H` collides between those finitely many inputs. -/
 theorem receiptPath_separated {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256)
-    (hH : NoCollision H ReceiptInput VisibleAscii) {k : ReceiptKey}
-    (hk : ValidDirectory k.directory.toList) {s : Text} (hs : VisibleAscii s) :
+    {S : List ReceiptKey} {T : List Text}
+    (hH : NoCollision H (InPlayInput S) (TextInPlay T)) {k : ReceiptKey}
+    (hk : InPlay S k) {s : Text} (hs : TextInPlay T s) :
     receiptPath H k ≠ hex64 (H s) := fun h =>
-  receiptPreimage_ne hs (hH _ _ ⟨k, hk, rfl⟩ hs (hex64_inj (hw _) (hw _) h))
+  receiptPreimage_ne hs.1 (hH _ _ ⟨k, hk, rfl⟩ hs (hex64_inj (hw _) (hw _) h))
 
 /-! ## Non-vacuity -/
 
@@ -442,7 +433,9 @@ theorem receiptPath_injOn {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256) {S : Li
 after a block's receipt writes commits to exactly the receipts `applyReceipts`
 produces, at their receipt paths. The hypotheses on hashing are only that
 SHA-256 has no collision among the receipt preimages in play (`hH`) and among
-the trie nodes the writes touch (`hT`). -/
+the trie nodes the writes touch (`hT`). `Represents` is read on the keys of
+`S`, so "exactly" is on `S`: `S` should hold every key of `m` and of the
+block's receipt actions. -/
 theorem receipts_commit_path {D : Type} {T : Merkle.Enc Char Address D → D}
     (ho : Merkle.StrictOrder Char) {H : Text → Nat} (hw : ∀ x, H x < 2 ^ 256)
     {S : List ReceiptKey} (hH : NoCollision H (InPlayInput S) (InPlayInput S))
@@ -487,5 +480,14 @@ theorem inPlay_noCollision_example :
   rintro x y ⟨k, ⟨-, hk⟩, rfl⟩ ⟨k', ⟨-, hk'⟩, rfl⟩ he
   simp only [List.mem_cons, List.not_mem_nil, or_false] at hk hk'
   rcases hk with rfl | rfl <;> rcases hk' with rfl | rfl <;> first | rfl | (revert he; decide)
+
+/-- `receiptPath_separated`'s hypothesis is satisfiable: a receipt key and a
+state key in play, whose preimages differ in length, under the toy `H`. -/
+theorem separated_noCollision_example :
+    NoCollision (fun x => x.length % 2 ^ 256) (InPlayInput [⟨"a", "d", 1, 2⟩])
+      (TextInPlay [['k']]) := by
+  rintro x y ⟨k, ⟨-, hk⟩, rfl⟩ ⟨-, hy⟩ he
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hk hy
+  subst hk; subst hy; revert he; decide
 
 end Lattice.Keys

@@ -97,7 +97,6 @@ section
 #print axioms receiptText_inj
 #print axioms receiptText_inj_of_demander
 #print axioms receiptText_collision
-#print axioms receiptPath_inj
 #print axioms receiptPreimage_ne
 #print axioms receiptPath_separated
 #print axioms cid_example
@@ -107,4 +106,5 @@ section
 #print axioms receipts_commit_path
 #print axioms receipts_commit_path_or_collision
 #print axioms inPlay_noCollision_example
+#print axioms separated_noCollision_example
 end
