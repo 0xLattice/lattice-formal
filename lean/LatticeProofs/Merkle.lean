@@ -209,8 +209,10 @@ def Kids.ins (c : K) (t : Trie K V D) : Kids K V D → Kids K V D
 the node (and must be resolved), several stay under a value-less node. -/
 def collapse (p : List K) : Kids K V D → Option (Option (Trie K V D))
   | .nil => some none
-  | .cons _ (.stub _) .nil => none
-  | .cons _ (.node p' v' ks') .nil => some (some (.node (p ++ p') v' ks'))
+  | .cons _ t .nil =>
+    match t with
+    | .stub _ => none
+    | .node p' v' ks' => some (some (.node (p ++ p') v' ks'))
   | ks@(.cons _ _ (.cons _ _ _)) => some (some (.node p none ks))
 
 /-- The result of descending into a node's children. -/
