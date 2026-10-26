@@ -10,4 +10,9 @@ MCPIds == <<"p1", "p2", "p3">>
 MCCIds == <<"c1", "c2", "c3">>
 MCSwaps == {"s"}
 
+\* MCSwapReorg_Replay: one further P block, four C blocks: deposit,
+\* release, and room to deposit and release the same key again.
+MCPIds1 == <<"p1">>
+MCCIds4 == <<"c1", "c2", "c3", "c4">>
+
 =============================================================================

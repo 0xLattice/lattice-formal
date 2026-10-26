@@ -23,6 +23,7 @@ jobs:
           - MCHierarchy3_Main.cfg
           - MCHierarchyFork_Main.cfg
           - MCSwapReorg_Main.cfg
+          - MCSwapReorg_Replay.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

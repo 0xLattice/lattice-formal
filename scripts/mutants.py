@@ -125,7 +125,7 @@ MUTANTS = [
      r"    /\ a \in Frontier", r"    /\ a \in pExec"),
     ("anchor-moves-sideways", "DemanderSafeIfAnchorCanonical", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
      r"    /\ cAnc[c] \in PLine(a)", r"    /\ cAnc[c] \in pMade"),
-    ("replay-drops-spent-marker", "SpentIffReleased", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
+    ("replay-drops-spent-marker", "NoDoubleRelease", "MCSwapReorg_Replay.cfg", "SwapReorg.tla",
      '[s \\in Swaps |-> IF s \\in wd THEN "spent"', '[s \\in Swaps |-> IF s \\in wd THEN "none"'),
     ("withdrawal-accepts-spent-marker", "NoDoubleRelease", "MCSwapReorg_Main.cfg", "SwapReorg.tla",
      '    /\\ StateAt(c)[s] = "live"\n    /\\ s \\in ReceiptsAt(a)', '    /\\ StateAt(c)[s] # "none"\n    /\\ s \\in ReceiptsAt(a)'),

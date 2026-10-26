@@ -269,9 +269,9 @@ anchor. A branch's deposit state is its replay from genesis.
 | `WithdrawalBackedOnAnchorBranch`: every withdrawal on any child branch, canonical or not, is backed by its paid receipt (inserted by a frontier block) on every parent branch containing that block's anchor | invariant | §8.1 phase 3, §8.3, §12.4.4 |
 | `NoDoubleRelease`: on any child branch, a deposit is released at most once | invariant | §8.3, §12.4.6 |
 | `ReleaseHasDeposit`: a release needs the deposit in a strictly earlier block of the same branch | invariant | §8.1 phase 3, §12.4.3 |
-| `SpentIffReleased`: a branch's replayed state shows a deposit spent exactly when that branch released it. A reorg undoes a release with its branch and never revives a deposit the new branch spent | invariant | §6.4 |
+| `SpentIffReleased`: a branch's replayed state shows a deposit spent exactly when that branch released it. State is per branch: the new canonical branch's replay does not contain the abandoned release, and never revives a deposit the new branch spent | invariant | §6.4 |
 | `DemanderSafeIfAnchorCanonical`: once the canonical child tip anchors on the canonical parent chain, every release on the canonical child chain is paid on the canonical parent chain | invariant | §5.3 step 6, §8.1 "Receipt canonicity" |
-| `WithdrawerCanRedeem`: a receipt paid on the canonical parent chain can be redeemed by a block on the canonical child tip, anchored at the parent tip, whenever the deposit is live there and the tip anchors on the canonical parent chain | invariant | §8.1 phase 3 |
+| `WithdrawerCanRedeem` (a lemma that the withdrawal guard is not too strict, not a guarantee: nothing makes a miner include the release): a receipt paid on the canonical parent chain can be redeemed by a block on the canonical child tip, anchored at the parent tip, whenever the deposit is live there and the tip anchors on the canonical parent chain | invariant | §8.1 phase 3 |
 
 Witnesses (each must FAIL):
 
@@ -292,7 +292,7 @@ Witnesses (each must FAIL):
 | continuity accepts a weighed, unexecuted anchor | `WithdrawalBackedOnAnchorBranch` |
 | continuity accepts an executed anchor off the executed-from-genesis frontier | `WithdrawalBackedOnAnchorBranch` |
 | an anchor may move sideways | `DemanderSafeIfAnchorCanonical` |
-| replay drops the spent marker (the key is deleted, not zeroed) | `SpentIffReleased` |
+| replay drops the spent marker (the key is deleted, not zeroed), so the deposit is made again and released twice against one receipt (`MCSwapReorg_Replay.cfg`: one parent block, four child blocks) | `NoDoubleRelease` |
 | a withdrawal accepts the spent marker (checks presence, not a nonzero value) | `NoDoubleRelease` |
 | a withdrawal skips the deposit proof | `ReleaseHasDeposit` |
 | a withdrawal needs the receipt inserted in the anchor block itself | `WithdrawerCanRedeem` |
@@ -310,7 +310,10 @@ Witnesses (each must FAIL):
   canonical. The withdrawer is exposed until the release is confirmed on
   the child: a child reorg can drop it, and if the deposit is dropped too
   there is nothing to redeem; while the deposit stays live on the
-  canonical child, the receipt can be redeemed again. A receipt is admitted
+  canonical child, the receipt can be redeemed again (`WithdrawerCanRedeem`
+  says the guard allows it; nothing makes a miner include it). If the
+  canonical child tip anchors on an abandoned parent branch, the withdrawer
+  cannot redeem until the child reorganizes. A receipt is admitted
   without any deposit (§8.1 phase 2), so paying before the deposit is
   confirmed on the child is the withdrawer's risk.
 - Not modelled: fork choice, amounts and accounts (`Swap.lean`), more than

@@ -197,8 +197,9 @@ ReleaseHasDeposit ==
     \A w \in cMade : \A s \in cWd[w] : \E d \in CLine(cPar[w]) : s \in cDep[d]
 
 \* §6.4: the replayed state of any branch shows a deposit spent exactly
-\* when that branch released it.  A reorg undoes a release with its branch
-\* and never revives a deposit the new branch has spent.
+\* when that branch released it.  State is per branch: the new canonical
+\* branch's replay does not contain the abandoned release, and never
+\* revives a deposit the new branch has spent.
 SpentIffReleased ==
     \A c \in cMade : \A s \in Swaps :
         (StateAt(c)[s] = "spent") <=> Released(s, c)
@@ -211,11 +212,13 @@ DemanderSafeIfAnchorCanonical ==
     cAnc[tipC] \in PLine(tipP) =>
         \A s \in Swaps : Released(s, tipC) => PaidOn(s, tipP)
 
-\* The withdrawer's guarantee.  A receipt paid on the canonical P chain
+\* A lemma that the withdrawal guard is not too strict, not a guarantee:
+\* nothing makes a miner include the release.  A receipt paid on the canonical P chain
 \* can be redeemed on the canonical C tip whenever the deposit is live
 \* there and the tip anchors on the canonical P chain: a C block anchored
 \* at the P tip may release it.  A release reorged out leaves the deposit
-\* live (SpentIffReleased), so it can be released again.
+\* live on the new branch if that branch contains it (SpentIffReleased),
+\* so it can be released again.
 WithdrawerCanRedeem ==
     \A s \in Swaps :
         (/\ PaidOn(s, tipP)
