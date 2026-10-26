@@ -78,6 +78,15 @@ The guarantee also needs strict decoding: a decoder that accepted duplicate
 map keys would allow two children under one CID with no collision, so
 canonical DAG-CBOR's duplicate-key rejection is part of the assumption.
 
+Checked against cashew 5.0.3, the version Lattice 52.1.0 and lattice-node pin.
+`DagCBOR.decode` re-encodes what it parsed and requires the same bytes, and
+every content fetch goes through it after the SHA-256 check. That includes the
+`FlatDictionary` children index the `ChildBlockProof` walk resolves. A children
+map with two different children under one directory is refused, both when
+decoded directly and when resolved by its CID. With the re-encode check
+removed, the decoder silently keeps the last entry, so that one line is what
+the guarantee rests on.
+
 ### Abstractions and limits
 
 - **Verified work is an input.** An observation stands for a proof that
