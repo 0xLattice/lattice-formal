@@ -788,7 +788,7 @@ two crashes.
 | Config | Reading |
 |---|---|
 | `MCRecovery_Main.cfg` | the spec's: replay in any order, and staging records the batch's reserved revision (current + 1) as a durable floor |
-| `MCRecovery_Node.cfg` | the implementation's: no floor (lattice-node restores with none), replay in `ChainTree.replay`'s sort order. Every property but `RevisionMonotone`, which fails here (finding below) |
+| `MCRecovery_Node.cfg` | `ChainTree.replay`'s sort order with no floor: what `ChainTree.restore` does when it is given none, as lattice-node did before adalinxx/lattice-node#22. Every property but `RevisionMonotone`, which fails here (finding below) |
 
 Witnesses, each of which must fail: `MCRecovery_WLost.cfg` reaches a crash
 between durable and visible, after which recovery shows the batch
@@ -824,9 +824,13 @@ staged as a block batch that re-states the strongest grind the tree holds
 (`ChainTree.connectJob`), which live import applies as a duplicate. Replay
 sorts block batches before work batches, so that batch lands the grind at its
 final quantity in one mutation and both work batches replay as duplicates.
-The restored revision is one lower than the last one exposed, and lattice-node
-passes no `revisionFloor` to `ChainTree.restore`. With the floor of
-`MCRecovery_Main.cfg` the probe passes.
+The restored revision is one lower than the last one exposed whenever
+`ChainTree.restore` gets no `revisionFloor`. With the floor of
+`MCRecovery_Main.cfg` the probe passes. Since adalinxx/lattice-node#22,
+lattice-node passes the number of durable batches as the floor. That is at
+least the model's floor, the reserved revision `rev + 1` recorded at each
+stage, because every staged batch adds one row and takes at most one
+revision. That holds on a root level only; see the limits below.
 
 It needs two observations of one grind at one location with different
 quantities, which §9.1 allows ("strengthening"). Consensus is unaffected; the
@@ -849,8 +853,13 @@ revision is the API's change counter.
   the persist effect before any publish, send or mining effect, stopping the
   process if the write fails. Nothing outside the step sees the tree before
   the write, which is the state this model's `up` exposes.
-- **Revisions without a fact** (`reevaluateForkChoice` bumping on a
-  projection change alone) are not modelled. Validations take no revision,
+- **Revisions without a fact** are not modelled: `reevaluateForkChoice`
+  bumping on a projection change alone, and on a child level the bump
+  `applyParentRun` takes for each raised attributed run (§9.10), every turn
+  the node re-derives runs. No durable row records those run bumps, and
+  restore re-derives each run once, so a child level's restored revision can
+  still fall below the last one exposed, even with lattice-node's floor.
+  lattice-node reports no revision to clients. Validations take no revision,
   as in the implementation.
 - **Static verdicts and prerequisites.** Proof checks, execution and target
   rules are folded into which batches exist and `Admissible`. Orphans
