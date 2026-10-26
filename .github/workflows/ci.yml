@@ -19,6 +19,7 @@ jobs:
           - MCHierarchy_ParentBad.cfg
           - MCHierarchy_P1Gap.cfg
           - MCHierarchy_HeldInvalid.cfg
+          - MCHierarchy3_Main.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

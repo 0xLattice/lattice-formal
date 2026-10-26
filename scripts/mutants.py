@@ -37,21 +37,21 @@ MUTANTS = [
 
     # Hierarchy (Hierarchy.tla)
     ("run-counts-carrier-grind-twice", "PhysicalWorkOnce", "MCHierarchy_Main.cfg", "Hierarchy.tla",
-     "Attributed(p) == RunWork(p) - GrindWork(p)", "Attributed(p) == RunWork(p)"),
+     "Attributed(ch, p) == RunWork(ch, p) - GrindWork(ch, p)", "Attributed(ch, p) == RunWork(ch, p)"),
     ("no-run-attribution", "ExpectedAnswer", "MCHierarchy_Main.cfg", "Hierarchy.tla",
-     r"IN  grinds + Sum(cs, [pc \in cs |-> Attributed(pc[1])])", "IN  grinds"),
+     r"IN  grinds + Sum(cs, [pc \in cs |-> Attributed(Up(ch), pc[1])])", "IN  grinds"),
     ("runs-follow-parent-canonicity", "ExpectedAnswer", "MCHierarchy_ParentBad.cfg", "Hierarchy.tla",
-     r'Run(p) == {q \in weighed["P"] :',
-     r'Run(p) == {q \in {y \in weighed["P"] : AncOrSelf(y) \cap excluded["P"] = {}} :'),
+     r'Run(ch, p) == {q \in weighed[ch] :',
+     r'Run(ch, p) == {q \in {y \in weighed[ch] : AncOrSelf(y) \cap excluded[ch] = {}} :'),
     ("continuity-requires-canonical-anchor", "ExpectedAnswer", "MCHierarchy_Main.cfg", "Hierarchy.tla",
-     r'        ELSE IF /\ new \in validated["P"]',
-     r'        ELSE IF /\ new \in validated["P"] /\ new \in AncOrSelf(CanonicalTip("P"))'),
+     r'        ELSE IF /\ new \in validated[Up(ChainOf(b))]',
+     r'        ELSE IF /\ new \in validated[Up(ChainOf(b))] /\ new \in AncOrSelf(CanonicalTip(Up(ChainOf(b))))'),
     ("continuity-accepts-unexecuted-anchor", "AnchoredAtExecuted", "MCHierarchy_P1Gap.cfg", "Hierarchy.tla",
-     r'        ELSE IF /\ new \in validated["P"]', r'        ELSE IF /\ new \in weighed["P"]'),
+     r'        ELSE IF /\ new \in validated[Up(ChainOf(b))]', r'        ELSE IF /\ new \in weighed[Up(ChainOf(b))]'),
     ("continuity-allows-sideways", "AnchorsAdvance", "MCHierarchy_Main.cfg", "Hierarchy.tla",
-     r"""        ELSE IF /\ new \in validated["P"]
+     r"""        ELSE IF /\ new \in validated[Up(ChainOf(b))]
                 /\ old \in AncOrSelf(new) \cup {None}""",
-     r"""        ELSE IF /\ new \in validated["P"]"""),
+     r"""        ELSE IF /\ new \in validated[Up(ChainOf(b))]"""),
     ("continuity-before-transition", "ExpectedAnswer", "MCHierarchy_HeldInvalid.cfg", "Hierarchy.tla",
      '    IF ~Valid[b] THEN "invalid"\n'
      '    ELSE IF ch = "P" THEN "valid"\n'
@@ -65,10 +65,17 @@ MUTANTS = [
     ("child-genesis-may-anchor-empty", "AnchoredAtExecuted", "MCHierarchy_Main.cfg", "Hierarchy.tla",
      r"THEN IF Parent[b] # None /\ old = None THEN", "THEN IF old = None THEN"),
     ("nearest-carrier-skips-itself", "PhysicalWorkOnce", "MCHierarchy_Main.cfg", "Hierarchy.tla",
-     r"""    IF \E c \in CBlocks : <<q, c>> \in Commits THEN q
+     r"""    IF Commits1(ch, q) THEN q
     ELSE IF Parent[q] = None THEN None""",
      r"""    IF Parent[q] = None THEN None
-    ELSE IF \E c \in CBlocks : <<Parent[q], c>> \in Commits THEN Parent[q]"""),
+    ELSE IF Commits1(ch, Parent[q]) THEN Parent[q]"""),
+
+    # Three levels (MCHierarchy3): caught only with a grandchild.
+    ("runs-drop-attributed-work", "ExpectedAnswer", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
+     '    + IF ch = "P" THEN 0\n', '    + IF TRUE THEN 0\n'),
+    ("grandchild-run-counts-carrier-grind-twice", "PhysicalWorkOnce", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
+     "Attributed(ch, p) == RunWork(ch, p) - GrindWork(ch, p)",
+     'Attributed(ch, p) == RunWork(ch, p) - IF ch = "C" THEN 0 ELSE GrindWork(ch, p)'),
 ]
 
 

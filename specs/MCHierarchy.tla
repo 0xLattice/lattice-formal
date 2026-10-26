@@ -36,6 +36,7 @@ EXTENDS Hierarchy
 
 MCPBlocks == {"pg", "p0", "p1", "p2", "p3", "p4"}
 MCCBlocks == {"c0", "c1", "c2", "c3", "c4", "c5", "c6"}
+MCGBlocks == {}   \* two levels; MCHierarchy3 adds a grandchild
 
 MCParent == [x \in MCPBlocks \cup MCCBlocks |->
                 CASE x = "p0" -> "pg"
@@ -90,7 +91,8 @@ MCValidAll == [x \in AllBlocks |-> TRUE]
 MCAvailAll == AllBlocks
 MCTipsMain ==
     [P |-> [canonical |-> "p2", validated |-> "p2"],
-     C |-> [canonical |-> "c3", validated |-> "c1"]]
+     C |-> [canonical |-> "c3", validated |-> "c1"],
+     G |-> [canonical |-> "none", validated |-> "none"]]
 
 \* PARENT VERDICTS: p2 and p4 are invalid.  The parent's canonical tip
 \* moves to p3.  c4, anchored at the excluded p2, is held forever, not
@@ -100,7 +102,8 @@ MCTipsMain ==
 MCValidParentBad == [x \in AllBlocks |-> x \notin {"p2", "p4"}]
 MCTipsParentBad ==
     [P |-> [canonical |-> "p3", validated |-> "p3"],
-     C |-> [canonical |-> "c3", validated |-> "c1"]]
+     C |-> [canonical |-> "c3", validated |-> "c1"],
+     G |-> [canonical |-> "none", validated |-> "none"]]
 
 \* HELD AND INVALID: c3's anchor is sideways (continuity held) and its
 \* transition is invalid.  The transition failure is a verdict under any
@@ -109,7 +112,8 @@ MCTipsParentBad ==
 MCValidHeldInvalid == [x \in AllBlocks |-> x # "c3"]
 MCTipsHeldInvalid ==
     [P |-> [canonical |-> "p2", validated |-> "p2"],
-     C |-> [canonical |-> "c1", validated |-> "c1"]]
+     C |-> [canonical |-> "c1", validated |-> "c1"],
+     G |-> [canonical |-> "none", validated |-> "none"]]
 
 \* PARENT AVAILABILITY: p1's body never arrives, so c1's anchor is never
 \* executed: c1 is HELD (not invalid) and the child acts on c2's branch,
@@ -117,6 +121,7 @@ MCTipsHeldInvalid ==
 MCAvailP1Gap == AllBlocks \ {"p1"}
 MCTipsP1Gap ==
     [P |-> [canonical |-> "p2", validated |-> "p2"],
-     C |-> [canonical |-> "c3", validated |-> "c4"]]
+     C |-> [canonical |-> "c3", validated |-> "c4"],
+     G |-> [canonical |-> "none", validated |-> "none"]]
 
 =============================================================================
