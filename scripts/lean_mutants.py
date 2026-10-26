@@ -106,6 +106,19 @@ MUTANTS = [
     ("children-not-sorted", {"proofs"},
      "if c < c' then .cons c t (.cons c' t' rest) else .cons c' t' (rest.ins c t)",
      ".cons c t (.cons c' t' rest)", "Merkle.lean"),
+    ("insert-overwrites", {"proofs"},
+     "      | .insert v, none => some (some (.node p (some v) ks))",
+     "      | .insert v, _ => some (some (.node p (some v) ks))", "Merkle.lean"),
+    ("delete-at-absent-key-succeeds", {"proofs"},
+     "      | .delete, some _ => collapse p ks",
+     "      | .delete, _ => collapse p ks", "Merkle.lean"),
+    ("collapse-merges-a-stub", {"proofs"},
+     "    | .stub _ => none\n    | .node p' v' ks' => some (some (.node (p ++ p') v' ks'))",
+     "    | .stub d => some (some (.stub d))\n    | .node p' v' ks' => some (some (.node (p ++ p') v' ks'))",
+     "Merkle.lean"),
+    ("digest-ignores-count", {"proofs"},
+     "  H (.root s.count (s.kids.digests H))",
+     "  H (.root 0 (s.kids.digests H))", "Merkle.lean"),
 ]
 
 
