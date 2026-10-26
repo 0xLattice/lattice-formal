@@ -21,6 +21,7 @@ jobs:
           - MCHierarchy_HeldInvalid.cfg
           - MCHierarchy_HeaderBad.cfg
           - MCHierarchy3_Main.cfg
+          - MCHierarchyFork_Main.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,6 +41,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Witnesses are reachable (properties are not vacuous)
+        run: |
+          scripts/tlc.sh MCHierarchyFork_W.cfg | tee w.log || true
+          grep -q "Invariant NoBackedFork is violated" w.log
+          scripts/tlc.sh MCHierarchyFork_WG.cfg | tee wg.log || true
+          grep -q "Invariant NoBackedGrandchildFork is violated" wg.log
       - name: Planted bugs must be caught
         run: python3 scripts/mutants.py
 

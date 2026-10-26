@@ -117,6 +117,9 @@ GrindWork(ch, p) == Sum(GrindsAt(ch, p), qty[ch])
 
 Run(ch, p) == {q \in weighed[ch] : NearestCarrier(ch, q) = p}
 
+\* The weighed carriers above that commit lower block q.
+CarriersOf(ch, q) == {u \in weighed[Up(ch)] : <<u, q>> \in Commits}
+
 \* runWork sums CREDITED work, grinds and attributed runs alike, so a run
 \* the chain above attributed to a block of this run reaches the chain below.
 RECURSIVE Credited(_, _), RunWork(_, _), Attributed(_, _)
@@ -131,7 +134,7 @@ RunWork(ch, p) == Sum(Run(ch, p), [q \in Run(ch, p) |-> Credited(ch, q)])
 Credited(ch, q) ==
     GrindWork(ch, q)
     + IF ch = "P" THEN 0
-      ELSE LET us == {u \in weighed[Up(ch)] : <<u, q>> \in Commits}
+      ELSE LET us == CarriersOf(ch, q)
            IN  Sum(us, [u \in us |-> Attributed(Up(ch), u)])
 
 -----------------------------------------------------------------------------
@@ -144,8 +147,8 @@ Subtree(ch, b) == {x \in weighed[ch] : b \in AncOrSelf(x)}
 TrueCumWork(ch, b) ==
     LET grinds == Sum({g \in Grinds : loc[ch][g] \in Subtree(ch, b)}, qty[ch])
         cs     == IF ch = "P" THEN {}
-                  ELSE {pc \in Commits : pc[1] \in weighed[Up(ch)]
-                                         /\ pc[2] \in Subtree(ch, b)}
+                  ELSE {pc \in Commits : pc[2] \in Subtree(ch, b)
+                                         /\ pc[1] \in CarriersOf(ch, pc[2])}
     IN  grinds + Sum(cs, [pc \in cs |-> Attributed(Up(ch), pc[1])])
 
 \* W is the chain's weight table, computed once per descent.

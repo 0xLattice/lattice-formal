@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp"}
+TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp", "NothingPruned"}
 
 # (name, property that must go red, config, file, old text, new text)
 MUTANTS = [
@@ -75,6 +75,34 @@ MUTANTS = [
     ("header-violation-dropped-not-weighed", "NothingStuck", "MCHierarchy_HeaderBad.cfg", "Hierarchy.tla",
      "    /\\ weighed' = [weighed EXCEPT ![o.ch] = @ \\cup {o.b}]\n    /\\ excluded' = IF o.b \\in HeaderBad",
      "    /\\ weighed' = IF o.b \\in HeaderBad THEN weighed ELSE [weighed EXCEPT ![o.ch] = @ \\cup {o.b}]\n    /\\ excluded' = IF FALSE"),
+
+    # Cross-chain fork choice (HierarchyProps.tla), each checked alone.
+    ("carrier-runs-count-once-validated", "WeightIgnoresVerdicts", "MCHierarchy_Main.cfg", "Hierarchy.tla",
+     r"CarriersOf(ch, q) == {u \in weighed[Up(ch)] :", r"CarriersOf(ch, q) == {u \in validated[Up(ch)] :"),
+    ("child-credits-only-selectable-carriers", "ParentCanonicityIrrelevant", "MCHierarchyFork_Main.cfg", "Hierarchy.tla",
+     r"CarriersOf(ch, q) == {u \in weighed[Up(ch)] : <<u, q>> \in Commits}",
+     r"CarriersOf(ch, q) == {u \in weighed[Up(ch)] : <<u, q>> \in Commits /\ AncOrSelf(u) \cap excluded[Up(ch)] = {}}"),
+    ("child-validity-follows-parent-validated-chain", "ParentCanonicityIrrelevant", "MCHierarchyFork_Main.cfg", "Hierarchy.tla",
+     r'        ELSE IF /\ new \in validated[Up(ChainOf(b))]',
+     r'        ELSE IF /\ new \in validated[Up(ChainOf(b))] /\ new \in AncOrSelf(ValidatedTip(Up(ChainOf(b))))'),
+    ("grandchild-credits-every-committing-carrier", "NoDoubleBacking", "MCHierarchyFork_Main.cfg", "Hierarchy.tla",
+     r"CarriersOf(ch, q) == {u \in weighed[Up(ch)] : <<u, q>> \in Commits}",
+     r'CarriersOf(ch, q) == {u \in weighed[Up(ch)] : \E l \in ChainBlocks(ch) : <<u, l>> \in Commits /\ (ch = "G" \/ l = q)}'),
+    ("carrier-credited-child-work-it-commits", "ChildrenCannotMoveParent", "MCHierarchyFork_Main.cfg", "Hierarchy.tla",
+     r"    IN  grinds + Sum(cs, [pc \in cs |-> Attributed(Up(ch), pc[1])])",
+     r"    IN  grinds + Sum(cs, [pc \in cs |-> Attributed(Up(ch), pc[1])])"
+     r' + IF ch = "P" THEN Sum({g \in Grinds : \E x \in Subtree(ch, b) : <<x, loc["C"][g]>> \in Commits}, qty["C"]) ELSE 0'),
+    ("held-anchor-excludes", "ExcludedHasCause", "MCHierarchy_Main.cfg", "Hierarchy.tla",
+     '           [] Continuity(b) = "held"    -> "held"\n',
+     '           [] Continuity(b) = "held"    -> "invalid"\n'),
+    ("fork-choice-by-own-work-not-subtree", "HeaviestAtEveryFork", "MCHierarchy_Main.cfg", "Hierarchy.tla",
+     r"    LET W == [x \in ChainBlocks(ch) |-> TrueCumWork(ch, x)]",
+     r"    LET W == [x \in ChainBlocks(ch) |-> Credited(ch, x)]"),
+    ("exclusion-prunes-block", "NothingPruned", "MCHierarchy_HeldInvalid.cfg", "Hierarchy.tla",
+     "    /\\ excluded' = [excluded EXCEPT ![ch] = @ \\cup {b}]\n    /\\ UNCHANGED <<delivered, loc, qty, weighed, validated>>",
+     "    /\\ excluded' = [excluded EXCEPT ![ch] = @ \\cup {b}]\n"
+     "    /\\ weighed' = [weighed EXCEPT ![ch] = @ \\ {b}]\n"
+     "    /\\ UNCHANGED <<delivered, loc, qty, validated>>"),
 
     # Three levels (MCHierarchy3): caught only with a grandchild.
     ("runs-drop-attributed-work", "ExpectedAnswer", "MCHierarchy3_Main.cfg", "Hierarchy.tla",
