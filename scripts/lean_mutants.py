@@ -72,10 +72,14 @@ MUTANTS = [
     ("receipt-credits-no-demander", {"proofs", "traces"},
      "(w, -(amt : Int)) :: (dm, (amt : Int)) :: accountActions as",
      "(w, -(amt : Int)) :: accountActions as"),
-    # No trace withdraws exactly the demanded amount, so only the proofs catch this.
-    ("full-withdrawal-leaves-deposit", {"proofs"},
-     "applyWithdrawals dir parentReceipts (m.set k 0) as",
-     "applyWithdrawals dir parentReceipts (if amtW = amtD then m else m.set k 0) as"),
+    ("withdrawal-ignores-receipt-withdrawer", {"proofs", "traces"},
+     "parentReceipts.get? ⟨dir, dm, amtD, n⟩ = some w then",
+     "(parentReceipts.get? ⟨dir, dm, amtD, n⟩).isSome then"),
+    ("deposits-before-withdrawals", {"proofs", "traces"},
+     """  let afterW ← applyWithdrawals dir parentReceipts s.deposits b.actions
+  let deposits ← applyDeposits afterW b.actions""",
+     """  let afterD ← applyDeposits s.deposits b.actions
+  let deposits ← applyWithdrawals dir parentReceipts afterD b.actions"""),
     # Rules no theorem states: only the implementation traces pin them down.
     ("burned-coinbase-bounded", {"traces"},
      "  | none => true\n",
@@ -86,11 +90,6 @@ MUTANTS = [
     ("receipt-zero-demand-accepted", {"traces"},
      "if m.get? k = none ∧ amtD ≠ 0 then applyReceipts (m.set k w) as else none",
      "if m.get? k = none then applyReceipts (m.set k w) as else none"),
-    ("deposits-before-withdrawals", {"traces"},
-     """  let afterW ← applyWithdrawals dir parentReceipts s.deposits b.actions
-  let deposits ← applyDeposits afterW b.actions""",
-     """  let afterD ← applyDeposits s.deposits b.actions
-  let deposits ← applyWithdrawals dir parentReceipts afterD b.actions"""),
     ("balances-applied-in-sequence", {"traces"},
      """  (ds.map (·.1)).eraseDups.foldlM
     (fun acc o =>

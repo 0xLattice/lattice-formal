@@ -350,8 +350,9 @@ theorem deposit_chain_provenance {bs : List (Map ReceiptKey Address × Block)}
 /-! ## Atomicity -/
 
 /-- §8.1 phase 3, §12.4: in a valid child run (at directory `dir`, from a
-well-formed state with no deposits) whose every `parentState` is a state the
-valid parent run (from no receipts) reached, every withdrawal is backed by
+well-formed state with no deposits), every withdrawal in a block whose
+`parentState` is a state the valid parent run (from no receipts) reached is
+backed by
 (a) a receipt action, naming the withdrawer, in a valid block of the parent
 run, which debited the withdrawer and credited the demander `amountDemanded`;
 and (b) a deposit of exactly the withdrawn amount at the same key in a
@@ -360,9 +361,9 @@ theorem swap_atomic {pdir : String} {p0 ps c0 cs : State}
     {pbs cbs : List (Map ReceiptKey Address × Block)}
     (hp : applyChain pdir p0 pbs = some ps) (hp0 : p0.receipts = [])
     (hc : applyChain dir c0 cbs = some cs) (hc0 : c0.WF) (hc0d : c0.deposits = [])
-    (hpar : ∀ x ∈ cbs, ∃ j ps', applyChain pdir p0 (pbs.take j) = some ps' ∧
-      x.1 = ps'.receipts)
     (i : Nat) (hi : i < cbs.length)
+    (hpar : ∃ j ps', applyChain pdir p0 (pbs.take j) = some ps' ∧
+      cbs[i].1 = ps'.receipts)
     (hw : Action.withdrawal w n dm amtD amtW ∈ cbs[i].2.actions) :
     (∃ j, ∃ hj : j < pbs.length,
       Action.receipt w n dm amtD dir ∈ pbs[j].2.actions ∧
@@ -374,7 +375,7 @@ theorem swap_atomic {pdir : String} {p0 ps c0 cs : State}
   obtain ⟨ci, ci', hci, hbi⟩ := applyChain_prefix hc i hi
   obtain ⟨q1, q2, q3⟩ := withdrawal_authorized (applyChain_wf hc0 hci) hbi hw
   constructor
-  · obtain ⟨j, ps', hj, hpr⟩ := hpar _ (List.getElem_mem hi)
+  · obtain ⟨j, ps', hj, hpr⟩ := hpar
     rw [hpr] at q3
     obtain ⟨l, hl, n', dm', amtD', d, hm, he⟩ := receipt_chain_provenance hp0 hj q3
     simp only [ReceiptKey.mk.injEq] at he
