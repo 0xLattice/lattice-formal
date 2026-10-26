@@ -196,6 +196,11 @@ def Op.applyMap (o : Op V) (k : List K) (m : List K → Option V) :
   | _, none => none
   | _, some _ => some fun k' => if k' = k then o.post else m k'
 
+/-- A batch of writes on the abstract map, one after another. -/
+def applyAllMap : List (List K × Op V) → (List K → Option V) → Option (List K → Option V)
+  | [], m => some m
+  | (k, o) :: ws, m => do applyAllMap ws (← o.applyMap k m)
+
 def leaf (k : List K) (v : V) : Trie K V D := .node k (some v) .nil
 
 variable [LT K] [DecidableRel (α := K) (· < ·)]

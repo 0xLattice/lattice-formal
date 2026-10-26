@@ -1,3 +1,9 @@
 import LatticeProofs.Model
 import LatticeProofs.Lemmas
 import LatticeProofs.Conservation
+import LatticeProofs.Merkle
+import LatticeProofs.MerkleLemmas
+import LatticeProofs.MerkleCanon
+import LatticeProofs.MerkleWitness
+import LatticeProofs.MerkleRoot
+import LatticeProofs.MerkleProofs
