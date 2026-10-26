@@ -42,9 +42,9 @@ MUTANTS = [
          totalDebits b.actions + totalWithdrawn b.actions)
 """, ""),
     ("withdrawal-ignores-parent-receipt", {"proofs", "traces"},
-     """if m.get? k = some amtW ∧ amtW ≠ 0 ∧ amtD ≠ 0 ∧
+     """if m.get? k = some amtW ∧ amtW ≠ 0 ∧
           parentReceipts.get? ⟨dir, dm, amtD, n⟩ = some w then""",
-     "if m.get? k = some amtW ∧ amtW ≠ 0 ∧ amtD ≠ 0 then"),
+     "if m.get? k = some amtW ∧ amtW ≠ 0 then"),
     ("over-withdrawal", {"proofs", "traces"},
      "if m.get? k = some amtW ∧ amtW ≠ 0 ∧",
      "if (m.get? k).isSome ∧ amtW ≠ 0 ∧"),
@@ -58,6 +58,11 @@ MUTANTS = [
     ("receipt-zero-demand-accepted", {"traces"},
      "if m.get? k = none ∧ amtD ≠ 0 then applyReceipts (m.set k w) as else none",
      "if m.get? k = none then applyReceipts (m.set k w) as else none"),
+    ("deposits-before-withdrawals", {"traces"},
+     """  let afterW ← applyWithdrawals dir parentReceipts s.deposits b.actions
+  let deposits ← applyDeposits afterW b.actions""",
+     """  let afterD ← applyDeposits s.deposits b.actions
+  let deposits ← applyWithdrawals dir parentReceipts afterD b.actions"""),
     ("balances-applied-in-sequence", {"traces"},
      """  (ds.map (·.1)).eraseDups.foldlM
     (fun acc o =>

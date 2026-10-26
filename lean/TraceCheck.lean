@@ -29,13 +29,15 @@ def depositKey (j : Json) : Except String DepositKey :=
 def receiptKey (j : Json) : Except String ReceiptKey :=
   return ⟨← str j "directory", ← str j "demander", ← nat j "amountDemanded", ← nat j "nonce"⟩
 
-/-- A JSON array of `[key, value]` pairs. -/
-def pairs (j : Json) (k : Json → Except String κ) (v : Json → Except String ν) :
+/-- A JSON array of `[key, value]` pairs, with distinct keys. -/
+def pairs [BEq κ] (j : Json) (k : Json → Except String κ) (v : Json → Except String ν) :
     Except String (Map κ ν) := do
-  (← j.getArr?).toList.mapM fun e => do
+  let m ← (← j.getArr?).toList.mapM fun e => do
     let a ← e.getArr?
     unless a.size = 2 do throw s!"expected a pair, got {e.compress}"
     return (← k a[0]!, ← v a[1]!)
+  unless (m.map (·.1)).eraseDups.length = m.length do throw "duplicate keys"
+  return m
 
 def state (j : Json) : Except String State :=
   return { balances := ← pairs (← field j "balances") Json.getStr? Json.getNat?

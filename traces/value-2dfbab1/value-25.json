@@ -1413,10 +1413,10 @@
         },
         {
           "amountDemanded" : 0,
-          "demander" : "bafyreigeposbua2mxqeajic6rw7pu2wmeqhtl6tkilyygbubzal6wqjt3u",
-          "directory" : "G2",
-          "kind" : "receipt",
-          "nonce" : 0,
+          "amountWithdrawn" : 49,
+          "demander" : "bafyreibwogp5mn3admj3bmv4akffgvblh6u6rdhwl6hf7bpnv32fttthgi",
+          "kind" : "withdrawal",
+          "nonce" : 2,
           "withdrawer" : "bafyreigta75cj2ox6jrkjqgmnwanepx4kmg2cgmuc24zzapprk7w2vv534"
         },
         {
@@ -1539,7 +1539,7 @@
       ]
     },
     "result" : null,
-    "violates" : "receiptZeroDemand"
+    "violates" : "withdrawZeroDemand"
   },
   {
     "block" : {

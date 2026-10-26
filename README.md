@@ -333,23 +333,24 @@ the verdict must agree, and on a valid block every entry of the three post
 sub-states must be equal.
 
 ```sh
-cd lean && lake build tracecheck && .lake/build/bin/tracecheck ../traces/value-2684a1e/*.json
+cd lean && lake build tracecheck && .lake/build/bin/tracecheck ../traces/value-2dfbab1/*.json
 ```
 
-`traces/value-2684a1e/` holds 510 cases (Lattice PR #39 at `2684a1e`), all
+`traces/value-2dfbab1/` holds 510 cases (Lattice PR #39 at `2dfbab1`), all
 conforming:
-- 322 valid blocks: 256 with a recipient and 66 burning fees, with spent
-  markers in 88. 97 are valid only because account deltas net per owner: in
+- 332 valid blocks: 251 with a recipient and 81 burning fees, with spent
+  markers in 102. 105 are valid only because account deltas net per owner: in
   action order the owner's debit comes first and alone overdraws it. Others
   rely on the coinbase netting with the recipient's own debits.
-- 188 blocks that each break exactly one rule, and the test asserts the
+- 178 blocks that each break exactly one rule, and the test asserts the
   implementation rejects each at that rule's check (a deposit and a receipt
   at an existing key share the insertion-proof failure, and a wrong-amount
   and a spent withdrawal share the spend check): overdraft, the fee rule, a
   zero delta, a zero deposit, a deposit or receipt at an existing key, a
   withdrawal with the wrong amount, of a spent deposit, without a parent
-  receipt or with one naming another withdrawer, and zero demands or amounts
-  on receipts and withdrawals.
+  receipt or with one naming another withdrawer, of a deposit made in the
+  same block (withdrawals come first, §6.4), and zero demands or amounts on
+  receipts and withdrawals.
 
 Checking the model against the implementation found two rules the spec did
 not state, and the model lacked one of them: a receipt needs a nonzero
@@ -359,7 +360,7 @@ both since adalinxx/Lattice#40, and the model has the receipt rule.
 
 ### Planted bugs
 
-`scripts/lean_mutants.py traces/value-2684a1e` breaks one rule of the model at
+`scripts/lean_mutants.py traces/value-2dfbab1` breaks one rule of the model at
 a time. A rule a theorem depends on must make the proofs stop building, and
 every mutant must make the model disagree with the implementation's traces:
 
@@ -373,6 +374,7 @@ every mutant must make the model disagree with the implementation's traces:
 | a deposit overwrites | break | disagree |
 | a negative balance is clamped | break | disagree |
 | a receipt with zero demand is accepted | (no theorem states it) | disagree |
+| deposits applied before withdrawals | (no theorem states it) | disagree |
 | balances move delta by delta in action order, not netted | (no theorem states it) | disagree |
 
 Not modelled: general key-value actions and nonces (they move no value),

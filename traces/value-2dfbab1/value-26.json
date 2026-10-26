@@ -1388,7 +1388,7 @@
       "actions" : [
         {
           "amountDemanded" : 2,
-          "amountWithdrawn" : 21,
+          "amountWithdrawn" : 15,
           "demander" : "bafyreieyun5dkh363xtp55sdsbjjvlslhoon5xubqauh5veze65uowntzy",
           "kind" : "withdrawal",
           "nonce" : 3,
@@ -1534,12 +1534,12 @@
     "block" : {
       "actions" : [
         {
-          "amountDemanded" : 24,
-          "amountWithdrawn" : 17,
+          "amountDemanded" : 6,
+          "amountWithdrawn" : 42,
           "demander" : "bafyreiag36biuu42b46l2lmpoykmkcexf5akvcxllkdgqhbdmdvsmsfnry",
           "kind" : "withdrawal",
           "nonce" : 2,
-          "withdrawer" : "bafyreieyun5dkh363xtp55sdsbjjvlslhoon5xubqauh5veze65uowntzy"
+          "withdrawer" : "bafyreibjyay4jlyi4fwud7seb4puo57gnohxiseqwjue4xew3n7mzrhdm4"
         },
         {
           "amountDemanded" : 14,
@@ -1574,7 +1574,7 @@
           "owner" : "bafyreiag36biuu42b46l2lmpoykmkcexf5akvcxllkdgqhbdmdvsmsfnry"
         }
       ],
-      "recipient" : null,
+      "recipient" : "bafyreiag36biuu42b46l2lmpoykmkcexf5akvcxllkdgqhbdmdvsmsfnry",
       "reward" : 100
     },
     "dir" : "Child",
@@ -1687,18 +1687,18 @@
       ]
     },
     "result" : null,
-    "violates" : "withdrawWrongWithdrawer"
+    "violates" : "withdrawSpent"
   },
   {
     "block" : {
       "actions" : [
         {
-          "amountDemanded" : 2,
-          "amountWithdrawn" : 16,
-          "demander" : "bafyreieyun5dkh363xtp55sdsbjjvlslhoon5xubqauh5veze65uowntzy",
+          "amountDemanded" : 41,
+          "amountWithdrawn" : 40,
+          "demander" : "bafyreibzcemamgmtulugffqbme5a5xjbblrnrtmgzn6oyssk6coa2dqrci",
           "kind" : "withdrawal",
-          "nonce" : 3,
-          "withdrawer" : "bafyreieyun5dkh363xtp55sdsbjjvlslhoon5xubqauh5veze65uowntzy"
+          "nonce" : 1,
+          "withdrawer" : "bafyreibjyay4jlyi4fwud7seb4puo57gnohxiseqwjue4xew3n7mzrhdm4"
         },
         {
           "delta" : -2,
@@ -1824,7 +1824,7 @@
       ]
     },
     "result" : null,
-    "violates" : "withdrawWrongWithdrawer"
+    "violates" : "withdrawSpent"
   },
   {
     "block" : {

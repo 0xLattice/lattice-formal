@@ -2394,6 +2394,14 @@
           "withdrawer" : "bafyreigh67ddko6hxbslv5x4anyfvnlsxyospzumgrhdwyvaspeoxjj25m"
         },
         {
+          "amountDemanded" : 0,
+          "amountWithdrawn" : 2,
+          "demander" : "bafyreigh67ddko6hxbslv5x4anyfvnlsxyospzumgrhdwyvaspeoxjj25m",
+          "kind" : "withdrawal",
+          "nonce" : 3,
+          "withdrawer" : "bafyreih2pbhsip7njkpqoxd5rqrk43cpn5ksvyy6c6r4lyxcnkjaebksou"
+        },
+        {
           "amountDemanded" : 21,
           "amountDeposited" : 22,
           "demander" : "bafyreigh67ddko6hxbslv5x4anyfvnlsxyospzumgrhdwyvaspeoxjj25m",
@@ -2407,14 +2415,6 @@
           "kind" : "receipt",
           "nonce" : 2,
           "withdrawer" : "bafyreigh67ddko6hxbslv5x4anyfvnlsxyospzumgrhdwyvaspeoxjj25m"
-        },
-        {
-          "amountDemanded" : 0,
-          "demander" : "bafyreih2pbhsip7njkpqoxd5rqrk43cpn5ksvyy6c6r4lyxcnkjaebksou",
-          "directory" : "G2",
-          "kind" : "receipt",
-          "nonce" : 2,
-          "withdrawer" : "bafyreibywzkhfquunbshqbno7smuoh7d6obis3jryucldtgkm2golx4xsm"
         },
         {
           "delta" : -567,
@@ -2576,7 +2576,7 @@
       ]
     },
     "result" : null,
-    "violates" : "receiptZeroDemand"
+    "violates" : "withdrawZeroDemand"
   },
   {
     "block" : {

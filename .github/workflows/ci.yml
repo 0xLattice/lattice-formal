@@ -79,6 +79,6 @@ jobs:
         working-directory: lean
         run: |
           lake build tracecheck
-          .lake/build/bin/tracecheck ../traces/value-2684a1e/*.json
+          .lake/build/bin/tracecheck ../traces/value-2dfbab1/*.json
       - name: Planted bugs break the proofs or the traces
-        run: python3 scripts/lean_mutants.py traces/value-2684a1e
+        run: python3 scripts/lean_mutants.py traces/value-2dfbab1
