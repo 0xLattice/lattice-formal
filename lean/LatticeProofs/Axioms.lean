@@ -17,4 +17,6 @@ section
 #print axioms deposit_fresh
 #print axioms receipt_fresh
 #print axioms receipt_provenance
+#print axioms balances_fit
+#print axioms coinbase_fits
 end

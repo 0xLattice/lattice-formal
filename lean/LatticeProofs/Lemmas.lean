@@ -464,9 +464,45 @@ theorem applyBlock_some {dir : String} {pr : Map ReceiptKey Address} {s s' : Sta
             cases hb : applyBalances s.balances (accountActions b.actions ++ coinbase b) with
             | none => simp [hw, hr, hb] at h
             | some bl =>
-              simp [hw, hd, hr, hb] at h
-              subst h
-              refine ⟨afterW, rfl, ?_, ?_, ?_⟩ <;> first | rfl | assumption
+              by_cases h3 : coinbaseFits b = true
+              · by_cases h4 : (bl.all fun x => decide (x.2 ≤ uint64Max)) = true
+                · simp [hw, hd, hr, hb, h3, h4] at h
+                  subst h
+                  refine ⟨afterW, rfl, ?_, ?_, ?_⟩ <;> first | rfl | assumption
+                · simp [hw, hd, hr, hb, h3, h4, guard, failure] at h
+              · simp [hw, hd, hr, hb, h3, guard, failure] at h
+    · simp [h1, h2, guard, failure, Option.bind] at h
+  · simp [h1, guard, failure, Option.bind] at h
+
+/-- The width guards a valid block passed. -/
+theorem applyBlock_fits {dir : String} {pr : Map ReceiptKey Address} {s s' : State} {b : Block}
+    (h : applyBlock dir pr s b = some s') :
+    coinbaseFits b = true ∧ ∀ e ∈ s'.balances, e.2 ≤ uint64Max := by
+  unfold applyBlock at h
+  by_cases h1 : accountActionsValid b.actions = true
+  · by_cases h2 : totalCredits b.actions + totalDeposited b.actions ≤
+        totalDebits b.actions + totalWithdrawn b.actions
+    · by_cases h3 : coinbaseFits b = true
+      · simp only [h1, h2, h3, guard, ite_true] at h
+        refine ⟨h3, ?_⟩
+        cases hw : applyWithdrawals dir pr s.deposits b.actions with
+        | none => simp [hw] at h
+        | some afterW =>
+          cases hd : applyDeposits afterW b.actions with
+          | none => simp [hw, hd] at h
+          | some d =>
+            cases hr : applyReceipts s.receipts b.actions with
+            | none => simp [hw, hr] at h
+            | some rc =>
+              cases hb : applyBalances s.balances (accountActions b.actions ++ coinbase b) with
+              | none => simp [hw, hr, hb] at h
+              | some bl =>
+                by_cases h4 : (bl.all fun x => decide (x.2 ≤ uint64Max)) = true
+                · simp [hw, hd, hr, hb, h4] at h
+                  subst h
+                  simpa using h4
+                · simp [hw, hd, hr, hb, h4, guard, failure] at h
+      · simp [h1, h2, h3, guard, failure, Option.bind] at h
     · simp [h1, h2, guard, failure, Option.bind] at h
   · simp [h1, guard, failure, Option.bind] at h
 
