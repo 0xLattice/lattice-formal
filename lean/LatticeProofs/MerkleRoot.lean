@@ -10,10 +10,10 @@ namespace Lattice.Merkle
 
 variable {K V D : Type} {H : Enc K V D → D}
 
-theorem Root.digest_inv (hH : Function.Injective H) {s s' : Root K V D}
+theorem Root.digest_inv {s s' : Root K V D} (hH : NoCollision H (s.HasEnc H) (s'.HasEnc H))
     (h : s.digest H = s'.digest H) :
     s.count = s'.count ∧ s.kids.digests H = s'.kids.digests H := by
-  have := hH h
+  have := hH _ _ (Or.inl rfl) (Or.inl rfl) h
   simpa [Enc.root.injEq] using this
 
 variable [DecidableEq K]
@@ -23,23 +23,28 @@ theorem Root.lookup_full {s : Root K V D} (hs : s.Full) (k : List K) : s.lookup 
   | nil => simp [Root.lookup]
   | cons c r => exact Kids.lookup_full _ c r hs
 
-theorem Root.lookup_congr (hH : Function.Injective H) {p s : Root K V D} (hs : s.Full)
+theorem NoCollision.root_kids {s s' : Root K V D} (h : NoCollision H (s.HasEnc H) (s'.HasEnc H)) :
+    NoCollision H (s.kids.HasEnc H) (s'.kids.HasEnc H) :=
+  h.mono (fun _ h => Or.inr h) (fun _ h => Or.inr h)
+
+theorem Root.lookup_congr {p s : Root K V D} (hH : NoCollision H (p.HasEnc H) (s.HasEnc H))
+    (hs : s.Full)
     (hd : p.digest H = s.digest H) {k : List K} (hu : p.lookup k ≠ .unknown) :
     p.lookup k = s.lookup k := by
   cases k with
   | nil => rfl
-  | cons c r => exact Kids.lookup_congr hH _ _ c r hs (Root.digest_inv hH hd).2 hu
+  | cons c r => exact Kids.lookup_congr _ _ c r hH.root_kids hs (Root.digest_inv hH hd).2 hu
 
 variable [LT K] [DecidableRel (α := K) (· < ·)]
 
-theorem Root.apply_congr (hH : Function.Injective H) (o : Op V) {p s p' : Root K V D}
-    {k : List K} (hs : s.Full) (hd : p.digest H = s.digest H) (h : p.apply o k = some p') :
+theorem Root.apply_congr (o : Op V) {p s p' : Root K V D} {k : List K}
+    (hH : NoCollision H (p.HasEnc H) (s.HasEnc H)) (hs : s.Full) (hd : p.digest H = s.digest H) (h : p.apply o k = some p') :
     ∃ s', s.apply o k = some s' ∧ p'.digest H = s'.digest H ∧ s'.Full := by
   obtain ⟨hc, hks⟩ := Root.digest_inv hH hd
   cases k with
   | nil => simp [Root.apply] at h
   | cons c r =>
-    have ⟨hm, hdn⟩ := Kids.descend_congr hH o p.kids s.kids c r hs hks
+    have ⟨hm, hdn⟩ := Kids.descend_congr o p.kids s.kids c r hH.root_kids hs hks
     simp only [Root.apply] at h ⊢
     cases hdp : p.kids.descend o c r with
     | missing =>
@@ -51,7 +56,7 @@ theorem Root.apply_congr (hH : Function.Injective H) (o : Op V) {p s p' : Root K
     | fail => rw [hdp] at h; simp at h
     | done ks1 b =>
       rw [hdp] at h
-      obtain ⟨ks1', e1, e2, e3⟩ := hdn ks1 b hdp
+      obtain ⟨ks1', e1, e2, e3, -⟩ := hdn ks1 b hdp
       rw [e1]
       simp only [Option.some.injEq] at h ⊢
       subst h

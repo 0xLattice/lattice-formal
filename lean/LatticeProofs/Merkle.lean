@@ -67,6 +67,29 @@ end
 def Root.digest (H : Enc K V D → D) (s : Root K V D) : D :=
   H (.root s.count (s.kids.digests H))
 
+mutual
+/-- The encodings a trie hashes: one per resolved node (a stub hashes
+nothing here). -/
+def Trie.HasEnc (H : Enc K V D → D) : Trie K V D → Enc K V D → Prop
+  | .stub _, _ => False
+  | .node p v ks, e => e = .node p v (ks.digests H) ∨ ks.HasEnc H e
+
+def Kids.HasEnc (H : Enc K V D → D) : Kids K V D → Enc K V D → Prop
+  | .nil, _ => False
+  | .cons _ t rest, e => t.HasEnc H e ∨ rest.HasEnc H e
+end
+
+def Root.HasEnc (H : Enc K V D → D) (s : Root K V D) (e : Enc K V D) : Prop :=
+  e = .root s.count (s.kids.digests H) ∨ s.kids.HasEnc H e
+
+/-- No collision of `H` between an encoding in `A` and one in `B`: the
+hypothesis the theorems take instead of injectivity. A real hash has
+collisions, but naming one among the encodings of given tries is a
+collision found; so each theorem says that breaking it yields a collision
+among the encodings it names. -/
+def NoCollision (H : Enc K V D → D) (A B : Enc K V D → Prop) : Prop :=
+  ∀ e₁ e₂, A e₁ → B e₂ → H e₁ = H e₂ → e₁ = e₂
+
 /-- The empty map: a root with count `0` and no children. -/
 def Root.empty : Root K V D := ⟨0, .nil⟩
 
@@ -299,6 +322,12 @@ def Root.applyAll : List (List K × Op V) → Root K V D → Option (Root K V D)
   | [], s => some s
   | (k, o) :: ws, s => do Root.applyAll ws (← s.apply o k)
 
+/-- The encodings of a root and of every root a run of writes reaches from it. -/
+def Root.RunHasEnc (H : Enc K V D → D) :
+    List (List K × Op V) → Root K V D → Enc K V D → Prop
+  | [], s, e => s.HasEnc H e
+  | (k, o) :: ws, s, e => s.HasEnc H e ∨ ∃ s1, s.apply o k = some s1 ∧ Root.RunHasEnc H ws s1 e
+
 /-! ## The partial trie a write needs -/
 
 /-- A node with its children left as stubs. -/
@@ -361,10 +390,13 @@ def Kids.length : Kids K V D → Nat
   | .cons _ _ rest => rest.length + 1
 
 mutual
-/-- The shape every transition from the empty root keeps (and the decoder
-does not check): every node is resolved, has a nonempty prefix, holds a value
-or at least two children; children are filed under their prefix's first
-character, in strictly increasing order. -/
+/-- The shape every transition from the empty root keeps: every node is
+resolved, has a nonempty prefix, holds a value or at least two children;
+children are filed under their prefix's first character, in strictly
+increasing order. cashew's strict decoding (re-encoding must give back the
+bytes) enforces single-character child keys in strictly increasing order; it
+does not check that a child's prefix starts with the character it is filed
+under, that a prefix is nonempty, or the value-or-two-children rule. -/
 def Trie.Canon : Trie K V D → Prop
   | .stub _ => False
   | .node p v ks => p ≠ [] ∧ (v ≠ none ∨ 2 ≤ ks.length) ∧ ks.Canon

@@ -24,10 +24,13 @@ end
 
 open Lattice.Merkle in
 section
+#print axioms or_collision
 #print axioms lookup_sound
+#print axioms lookup_sound_or_collision
 #print axioms unknown_write_fails
 #print axioms read_then_write_sound
 #print axioms apply_sound
+#print axioms apply_sound_or_collision
 #print axioms apply_correct
 #print axioms apply_complete
 #print axioms canonical_unique
@@ -40,6 +43,8 @@ section
 #print axioms commits_unique
 #print axioms commits_empty
 #print axioms block_commits
+#print axioms block_commits_or_collision
 #print axioms chain_commits
+#print axioms chain_from_empty
 #print axioms receipts_commit
 end
