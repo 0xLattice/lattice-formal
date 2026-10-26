@@ -59,6 +59,23 @@ MUTANTS = [
      "  guard (coinbaseFits b)\n", ""),
     ("balance-beyond-uint64", {"proofs", "traces"},
      "  guard (balances.all (·.2 ≤ uint64Max))\n", ""),
+    # Cross-chain swaps (Swap.lean).
+    ("withdrawal-checks-own-receipts", {"proofs", "traces"},
+     "let afterW ← applyWithdrawals dir parentReceipts s.deposits b.actions",
+     "let afterW ← applyWithdrawals dir s.receipts s.deposits b.actions"),
+    ("receipt-key-drops-directory", {"proofs", "traces"},
+     "      let k : ReceiptKey := ⟨d, dm, amtD, n⟩",
+     "      let k : ReceiptKey := ⟨\"\", dm, amtD, n⟩"),
+    ("receipt-overwrites", {"proofs", "traces"},
+     "if m.get? k = none ∧ amtD ≠ 0 then applyReceipts (m.set k w) as else none",
+     "if amtD ≠ 0 then applyReceipts (m.set k w) as else none"),
+    ("receipt-credits-no-demander", {"proofs", "traces"},
+     "(w, -(amt : Int)) :: (dm, (amt : Int)) :: accountActions as",
+     "(w, -(amt : Int)) :: accountActions as"),
+    # No trace withdraws exactly the demanded amount, so only the proofs catch this.
+    ("full-withdrawal-leaves-deposit", {"proofs"},
+     "applyWithdrawals dir parentReceipts (m.set k 0) as",
+     "applyWithdrawals dir parentReceipts (if amtW = amtD then m else m.set k 0) as"),
     # Rules no theorem states: only the implementation traces pin them down.
     ("burned-coinbase-bounded", {"traces"},
      "  | none => true\n",
