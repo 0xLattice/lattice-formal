@@ -130,6 +130,10 @@ def Read.ofOption : Option V → Read V
   | some v => .found v
   | none => .absent
 
+def Read.toOption : Read V → Option V
+  | .found v => some v
+  | _ => none
+
 mutual
 /-- `lookup t k`: the value at the rest of a key `k`, which starts at node `t`
 (cashew `RadixNode.get`). -/
@@ -154,10 +158,7 @@ def Root.lookup (s : Root K V D) : List K → Read V
 
 /-- The map a trie stands for (stubs read as absent; on a full trie they do
 not occur). -/
-def Root.toMap (s : Root K V D) (k : List K) : Option V :=
-  match s.lookup k with
-  | .found v => some v
-  | _ => none
+def Root.toMap (s : Root K V D) (k : List K) : Option V := (s.lookup k).toOption
 
 /-! ## Transitions -/
 
@@ -294,6 +295,14 @@ def Root.applyAll : List (List K × Op V) → Root K V D → Option (Root K V D)
   | (k, o) :: ws, s => do Root.applyAll ws (← s.apply o k)
 
 /-! ## Canonical form -/
+
+/-- The character order children are sorted by: a strict total order (the
+implementation's `Character` order on visible ASCII). -/
+structure StrictOrder (K : Type) [LT K] : Prop where
+  irrefl : ∀ a : K, ¬ a < a
+  trans : ∀ {a b c : K}, a < b → b < c → a < c
+  total : ∀ a b : K, a < b ∨ a = b ∨ b < a
+
 
 /-- A node's prefix starts with the character it is filed under. -/
 def Trie.HeadIs (c : K) : Trie K V D → Prop
