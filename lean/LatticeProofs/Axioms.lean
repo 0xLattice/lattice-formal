@@ -3,8 +3,6 @@ import LatticeProofs.MerkleProofs
 import LatticeProofs.Swap
 import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs
-end
-
 import LatticeProofs.AsertProofs
 
 open Lattice in
