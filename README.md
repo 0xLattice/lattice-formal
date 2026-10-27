@@ -745,6 +745,118 @@ cd lean && lake build                    # includes the Merkle proofs
 lake env lean LatticeProofs/Axioms.lean  # lists the Merkle theorems too
 ```
 
+### Work from targets (`LatticeProofs/Work.lean`)
+
+`workForTarget`, `workForHash` and the §9.5 carrier-ladder credit, exactly as
+Lattice's `LatticePoW` and `ChildBlockProof.verifySecuringWork` compute them,
+over a width `N` (`N = 2^256`). A hash `h` meets target `t` when
+`0 < t ∧ h ≤ t` (`validateProofOfWork`). Hashes are uniform (SHA-256 as a
+random oracle), so an expectation is a sum over all `N` hash values.
+
+| Theorem | Spec |
+|---|---|
+| `workForTarget_eq`: for every nonzero target, `workForTarget t = ⌊N / (t + 1)⌋` | §5.4 |
+| `workForTarget_eq_bitcoin`: the code equals Bitcoin's `(~t / (t + 1)) + 1` in `N`-bit wrapping arithmetic for every target, `0` included | §5.4 |
+| `workForTarget_zero`, `workForTarget_max`, `u256_edges`: target `0` credits `0` and is met by no hash; `U256_MAX` credits `1` | §5.4 |
+| `workForHash_eq`, `workForHash_zero`: `workForHash h = workForTarget h` except that hash `0` saturates at `U256_MAX` | §5.4 |
+| `exclusive_between`, `exclusive_at_one`, `exclusive_credit_exceeds`: the rejected `U256_MAX / t` is between `1×` and `2×` the inclusive work, reaches `2×` at `t = 1`, and there earns more than `1` per hash | §5.4 |
+| `credit_per_hash_le`, `credit_per_hash_ge`: one hash at any target earns `(t + 1) / N · workForTarget t`, at most `1` and more than `1/2` (rounding loses less than `(t + 1) / N`) | §5.4 |
+| `credit_le_creditMax`, `rules_differ`: the root-most-beaten rule never credits more than the maximum over beaten targets, and on an inverted ladder credits less | §9.1, §9.5 |
+| `ladder_credit_le`, `terminal_credit_le`, `ladder_exceeds_one`: a ladder of `k` carriers, whatever targets a prover fabricates, earns at most `k + 1` per hash in expectation; with no carrier, at most `1`; one carrier can earn nearly `2` | §9.5 |
+
+Readings:
+- **Target 0.** §5.4 writes `floor(2^256 / (target + 1))` with the edge
+  `target 0 -> 0`. The floor formula gives `2^256` there (not a `U256`); `0`
+  is Bitcoin's own convention and what the formula gives in 256-bit
+  arithmetic. It cannot matter: target 0 is met by no hash.
+- **Harder targets.** No target earns more than `1` per hash, so choosing one
+  harder than scheduled earns nothing beyond the hash's work. It can earn
+  more than the scheduled target does, at targets so easy that rounding
+  loses up to half (`harder_target_rounding`: target `N/2` earns just over
+  `1/2`, target `N/2 - 1` exactly `1`); at realistic targets the loss is
+  below `(t + 1) / N`.
+- **Ladders earn more than `1` per hash.** Each level's credit is honest per
+  event, but a ladder prices the hash at the hardest carrier it happened to
+  meet, so the expectation is a sum over levels. The depth of the chain path
+  bounds it (`chainPath.count = directoryPath.count + 1`); the root-most rule
+  does not change that bound, as §9.5 says. Honest merged mining over a
+  harder parent earns the same at the child.
+
+### Encodings (`LatticeProofs/Keys.lean`)
+
+The byte strings Lattice hashes or keys tries by, as the code builds them
+(all ASCII, so a character is a byte): `powPrefix`
+(`Block.makeProofOfWorkPreimagePrefix`), the `DepositKey` and `ReceiptKey`
+texts, the receipt-state path `hex(SHA256("lattice/receipt-state/v1\0" ||
+ReceiptKey))` (`ReceiptKey.storageKey`), and the canonical text of a standard
+CID (`CIDDigest`), which is also the canonical address (§11.1,
+`CryptoUtils.isValidAddress`). Decimal is Lean's `Nat.repr` / `Int.repr`
+(their injectivity comes from the toolchain's `Std`); hex is 64 lowercase
+digits, `%0.16lx` four times.
+
+| Theorem | Spec |
+|---|---|
+| `powPrefix_inj`: two headers whose links are standard CIDs, targets `U256` and recipients `0x00`-free share a preimage only if every field is equal; absent and present-empty recipients differ by the `0x01` tag (`recipient_tag_example`) | §5.4 |
+| `joinSep_inj`, `decimal_inj`, `decimalInt_inj`, `hex64_inj`, `cidText_valid`: the parts: `0x00`-separated fields that hold no `0x00` split uniquely, each field encoder is injective, and no decimal, hex or CID text holds `0x00` | §5.4 |
+| `cid_decode_encode`, `cid_encode_decode`, `cid_one_spelling`, `cid_padding_refused`: a standard CID has exactly one accepted text spelling, `b` and 58 lowercase base32 digits with zero padding bits; `cid_example` evaluates the `bafyrei…` spelling | §2, §3.1, §9.1 |
+| `cidText_valid`: a canonical address meets the account grammar (visible ASCII, no `/`) | §3.5, §11.1 |
+| `depositText_inj`: the `DepositKey` text is injective for every demander | §3.7 |
+| `receiptText_inj`, `receiptText_inj_of_demander`, `receiptText_collision`: the `ReceiptKey` text is injective when the directory has no `/`, and also when the demander has none; with neither ban, `a/b`,`c` and `a`,`b/c` collide | §3.5, §3.7 |
+| `receiptPath_injOn`, `receipts_commit_path`, `receipts_commit_path_or_collision`, `inPlay_noCollision_example`: the receipt path is injective on the grammar-valid keys in play, and the receipt sub-state commits through `ReceiptKey.storageKey` itself to exactly the receipts on the keys in play (`S`, which should hold every key of the map and of the block), unless SHA-256 collides among those keys' preimages or the trie nodes touched | §3.5, §6.5, §12.1 |
+| `receiptPreimage_ne`, `receiptPath_separated`, `separated_noCollision_example`: no receipt preimage is visible-ASCII text, so a receipt path in play is never the hash of a state key or key text in play, unless SHA-256 collides among those finitely many inputs; the domain's `0x00` is what does it | §3.5 |
+
+Readings:
+- **Either `/` ban keeps `ReceiptKey` injective.** §3.5 says directories are
+  `/`-free "to keep ReceiptKey injectivity". That ban suffices alone, but so
+  does the account grammar's, which already bans `/` in the demander (both are
+  enforced, `TransactionBody.stateAtomsAreValid`). The directory ban is
+  needed for chain paths and `children` keys either way (§3.1).
+- **The recipient needs no `0x00` ban** for injectivity, being the last field;
+  the theorem requires it only to state the format. The `0x01` tag is what
+  separates absent from present-empty; a canonical address is never empty,
+  so on structurally valid blocks the tag is defence in depth.
+- **Hashing hypotheses are finite.** Every `NoCollision` in these files
+  ranges over the finitely many inputs in play (the keys `S`, the texts
+  `T`), never over all receipt preimages: those are infinitely many and
+  distinct, so with a 256-bit `H` such a hypothesis is contradictory. Each
+  has a satisfiability witness.
+- **`receipts_commit` through the real path.** `receipts_commit` assumed
+  `Function.Injective` of the storage-key encoding, which no hash satisfies
+  (a 256-bit digest of unbounded keys collides), so the theorem was vacuous
+  for `ReceiptKey.storageKey`. It now assumes injectivity only on the keys in
+  play (`InjOn enc P`, with `Represents` read on `P`), and
+  `receipts_commit_path` instantiates it with `receiptPath` itself: the
+  remaining hashing hypotheses are that SHA-256 has no collision among the
+  finitely many receipt preimages in play and among the trie nodes the
+  writes touch; `receipts_commit_path_or_collision` is the collision form,
+  and `inPlay_noCollision_example` shows the hypothesis satisfiable.
+  `Swap.lean` keys its maps by the `ReceiptKey` structure, which
+  `receiptText_inj` justifies on valid keys.
+
+Not modelled: the DAG-CBOR bytes behind a CID (a digest is any 256-bit
+number), non-standard CIDs (CIDv0 and other codecs, refused in headers), and
+Swift's `String` Unicode equivalence (keys are ASCII by the grammar).
+
+### Planted bugs: work and encodings
+
+`scripts/lean_mutants.py`; each mutant makes the named theorem false, so the
+proofs stop building:
+
+| Mutant | Killed by |
+|---|---|
+| work uses the exclusive `U256_MAX / t` | `workForTarget_eq`, `credit_per_hash_le` |
+| target `0` credited `⌊N / 1⌋` (the floor formula read literally) | `workForTarget_zero` |
+| `validateProofOfWork` without the `target > 0` guard | `workForTarget_zero` |
+| a ladder credits without the terminal's own target being met | `ladder_credit_le` |
+| the ladder credits the maximum over beaten carriers (the superseded rule) | `rules_differ` |
+| the recipient is appended without the `0x01` tag | `powPrefix_inj` |
+| no separator between `height` and `timestamp` (`1`,`23` = `12`,`3`) | `powPrefix_inj` |
+| no separator between `amountDemanded` and `nonce` in `DepositKey` | `depositText_inj` |
+| a directory may contain `/` | `receiptText_inj` |
+| the receipt-state domain separator is dropped | `receiptPreimage_ne` |
+| the receipt path hashes the `DepositKey` text (directory omitted) | `receiptPath_injOn` |
+| a CID's padding bits are not checked (a second spelling decodes) | `cid_encode_decode` |
+
 ## Import and recovery (`specs/Recovery.tla`)
 
 One node importing into one chain, crashing anywhere: spec §9.3 steps 8-9,
@@ -866,118 +978,6 @@ revision is the API's change counter.
   (blocks staged before their parent) are not generated.
 - **Small scope:** three blocks, nine candidate batches, five durable
   batches, two crashes.
-
-### Work from targets (`LatticeProofs/Work.lean`)
-
-`workForTarget`, `workForHash` and the §9.5 carrier-ladder credit, exactly as
-Lattice's `LatticePoW` and `ChildBlockProof.verifySecuringWork` compute them,
-over a width `N` (`N = 2^256`). A hash `h` meets target `t` when
-`0 < t ∧ h ≤ t` (`validateProofOfWork`). Hashes are uniform (SHA-256 as a
-random oracle), so an expectation is a sum over all `N` hash values.
-
-| Theorem | Spec |
-|---|---|
-| `workForTarget_eq`: for every nonzero target, `workForTarget t = ⌊N / (t + 1)⌋` | §5.4 |
-| `workForTarget_eq_bitcoin`: the code equals Bitcoin's `(~t / (t + 1)) + 1` in `N`-bit wrapping arithmetic for every target, `0` included | §5.4 |
-| `workForTarget_zero`, `workForTarget_max`, `u256_edges`: target `0` credits `0` and is met by no hash; `U256_MAX` credits `1` | §5.4 |
-| `workForHash_eq`, `workForHash_zero`: `workForHash h = workForTarget h` except that hash `0` saturates at `U256_MAX` | §5.4 |
-| `exclusive_between`, `exclusive_at_one`, `exclusive_credit_exceeds`: the rejected `U256_MAX / t` is between `1×` and `2×` the inclusive work, reaches `2×` at `t = 1`, and there earns more than `1` per hash | §5.4 |
-| `credit_per_hash_le`, `credit_per_hash_ge`: one hash at any target earns `(t + 1) / N · workForTarget t`, at most `1` and more than `1/2` (rounding loses less than `(t + 1) / N`) | §5.4 |
-| `credit_le_creditMax`, `rules_differ`: the root-most-beaten rule never credits more than the maximum over beaten targets, and on an inverted ladder credits less | §9.1, §9.5 |
-| `ladder_credit_le`, `terminal_credit_le`, `ladder_exceeds_one`: a ladder of `k` carriers, whatever targets a prover fabricates, earns at most `k + 1` per hash in expectation; with no carrier, at most `1`; one carrier can earn nearly `2` | §9.5 |
-
-Readings:
-- **Target 0.** §5.4 writes `floor(2^256 / (target + 1))` with the edge
-  `target 0 -> 0`. The floor formula gives `2^256` there (not a `U256`); `0`
-  is Bitcoin's own convention and what the formula gives in 256-bit
-  arithmetic. It cannot matter: target 0 is met by no hash.
-- **Harder targets.** No target earns more than `1` per hash, so choosing one
-  harder than scheduled earns nothing beyond the hash's work. It can earn
-  more than the scheduled target does, at targets so easy that rounding
-  loses up to half (`harder_target_rounding`: target `N/2` earns just over
-  `1/2`, target `N/2 - 1` exactly `1`); at realistic targets the loss is
-  below `(t + 1) / N`.
-- **Ladders earn more than `1` per hash.** Each level's credit is honest per
-  event, but a ladder prices the hash at the hardest carrier it happened to
-  meet, so the expectation is a sum over levels. The depth of the chain path
-  bounds it (`chainPath.count = directoryPath.count + 1`); the root-most rule
-  does not change that bound, as §9.5 says. Honest merged mining over a
-  harder parent earns the same at the child.
-
-### Encodings (`LatticeProofs/Keys.lean`)
-
-The byte strings Lattice hashes or keys tries by, as the code builds them
-(all ASCII, so a character is a byte): `powPrefix`
-(`Block.makeProofOfWorkPreimagePrefix`), the `DepositKey` and `ReceiptKey`
-texts, the receipt-state path `hex(SHA256("lattice/receipt-state/v1\0" ||
-ReceiptKey))` (`ReceiptKey.storageKey`), and the canonical text of a standard
-CID (`CIDDigest`), which is also the canonical address (§11.1,
-`CryptoUtils.isValidAddress`). Decimal is Lean's `Nat.repr` / `Int.repr`
-(their injectivity comes from the toolchain's `Std`); hex is 64 lowercase
-digits, `%0.16lx` four times.
-
-| Theorem | Spec |
-|---|---|
-| `powPrefix_inj`: two headers whose links are standard CIDs, targets `U256` and recipients `0x00`-free share a preimage only if every field is equal; absent and present-empty recipients differ by the `0x01` tag (`recipient_tag_example`) | §5.4 |
-| `joinSep_inj`, `decimal_inj`, `decimalInt_inj`, `hex64_inj`, `cidText_valid`: the parts: `0x00`-separated fields that hold no `0x00` split uniquely, each field encoder is injective, and no decimal, hex or CID text holds `0x00` | §5.4 |
-| `cid_decode_encode`, `cid_encode_decode`, `cid_one_spelling`, `cid_padding_refused`: a standard CID has exactly one accepted text spelling, `b` and 58 lowercase base32 digits with zero padding bits; `cid_example` evaluates the `bafyrei…` spelling | §2, §3.1, §9.1 |
-| `cidText_valid`: a canonical address meets the account grammar (visible ASCII, no `/`) | §3.5, §11.1 |
-| `depositText_inj`: the `DepositKey` text is injective for every demander | §3.7 |
-| `receiptText_inj`, `receiptText_inj_of_demander`, `receiptText_collision`: the `ReceiptKey` text is injective when the directory has no `/`, and also when the demander has none; with neither ban, `a/b`,`c` and `a`,`b/c` collide | §3.5, §3.7 |
-| `receiptPath_injOn`, `receipts_commit_path`, `receipts_commit_path_or_collision`, `inPlay_noCollision_example`: the receipt path is injective on the grammar-valid keys in play, and the receipt sub-state commits through `ReceiptKey.storageKey` itself to exactly the receipts on the keys in play (`S`, which should hold every key of the map and of the block), unless SHA-256 collides among those keys' preimages or the trie nodes touched | §3.5, §6.5, §12.1 |
-| `receiptPreimage_ne`, `receiptPath_separated`, `separated_noCollision_example`: no receipt preimage is visible-ASCII text, so a receipt path in play is never the hash of a state key or key text in play, unless SHA-256 collides among those finitely many inputs; the domain's `0x00` is what does it | §3.5 |
-
-Readings:
-- **Either `/` ban keeps `ReceiptKey` injective.** §3.5 says directories are
-  `/`-free "to keep ReceiptKey injectivity". That ban suffices alone, but so
-  does the account grammar's, which already bans `/` in the demander (both are
-  enforced, `TransactionBody.stateAtomsAreValid`). The directory ban is
-  needed for chain paths and `children` keys either way (§3.1).
-- **The recipient needs no `0x00` ban** for injectivity, being the last field;
-  the theorem requires it only to state the format. The `0x01` tag is what
-  separates absent from present-empty; a canonical address is never empty,
-  so on structurally valid blocks the tag is defence in depth.
-- **Hashing hypotheses are finite.** Every `NoCollision` in these files
-  ranges over the finitely many inputs in play (the keys `S`, the texts
-  `T`), never over all receipt preimages: those are infinitely many and
-  distinct, so with a 256-bit `H` such a hypothesis is contradictory. Each
-  has a satisfiability witness.
-- **`receipts_commit` through the real path.** `receipts_commit` assumed
-  `Function.Injective` of the storage-key encoding, which no hash satisfies
-  (a 256-bit digest of unbounded keys collides), so the theorem was vacuous
-  for `ReceiptKey.storageKey`. It now assumes injectivity only on the keys in
-  play (`InjOn enc P`, with `Represents` read on `P`), and
-  `receipts_commit_path` instantiates it with `receiptPath` itself: the
-  remaining hashing hypotheses are that SHA-256 has no collision among the
-  finitely many receipt preimages in play and among the trie nodes the
-  writes touch; `receipts_commit_path_or_collision` is the collision form,
-  and `inPlay_noCollision_example` shows the hypothesis satisfiable.
-  `Swap.lean` keys its maps by the `ReceiptKey` structure, which
-  `receiptText_inj` justifies on valid keys.
-
-Not modelled: the DAG-CBOR bytes behind a CID (a digest is any 256-bit
-number), non-standard CIDs (CIDv0 and other codecs, refused in headers), and
-Swift's `String` Unicode equivalence (keys are ASCII by the grammar).
-
-### Planted bugs: work and encodings
-
-`scripts/lean_mutants.py`; each mutant makes the named theorem false, so the
-proofs stop building:
-
-| Mutant | Killed by |
-|---|---|
-| work uses the exclusive `U256_MAX / t` | `workForTarget_eq`, `credit_per_hash_le` |
-| target `0` credited `⌊N / 1⌋` (the floor formula read literally) | `workForTarget_zero` |
-| `validateProofOfWork` without the `target > 0` guard | `workForTarget_zero` |
-| a ladder credits without the terminal's own target being met | `ladder_credit_le` |
-| the ladder credits the maximum over beaten carriers (the superseded rule) | `rules_differ` |
-| the recipient is appended without the `0x01` tag | `powPrefix_inj` |
-| no separator between `height` and `timestamp` (`1`,`23` = `12`,`3`) | `powPrefix_inj` |
-| no separator between `amountDemanded` and `nonce` in `DepositKey` | `depositText_inj` |
-| a directory may contain `/` | `receiptText_inj` |
-| the receipt-state domain separator is dropped | `receiptPreimage_ne` |
-| the receipt path hashes the `DepositKey` text (directory omitted) | `receiptPath_injOn` |
-| a CID's padding bits are not checked (a second spelling decodes) | `cid_encode_decode` |
 
 ## Roadmap
 
