@@ -103,7 +103,7 @@ jobs:
           lake build
           ! grep -n -E '\bsorry\b|\badmit\b|^axiom|native_decide|implemented_by' LatticeProofs/*.lean
           lake env lean LatticeProofs/Axioms.lean | tee axioms.txt
-          ! grep -v -E "depends on axioms: \[(propext|Classical.choice|Quot.sound)(, (propext|Classical.choice|Quot.sound))*\]" axioms.txt
+          ! grep -v -E "depends on axioms: \[(propext|Classical.choice|Quot.sound)(, (propext|Classical.choice|Quot.sound))*\]|does not depend on any axioms" axioms.txt
       - name: Implementation value traces conform to the model
         working-directory: lean
         run: |
