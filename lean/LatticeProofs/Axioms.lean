@@ -3,6 +3,7 @@ import LatticeProofs.MerkleProofs
 import LatticeProofs.Swap
 import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs
+import LatticeProofs.AsertProofs
 
 open Lattice in
 section
@@ -107,4 +108,31 @@ section
 #print axioms receipts_commit_path_or_collision
 #print axioms inPlay_noCollision_example
 #print axioms separated_noCollision_example
+end
+
+open Lattice.Asert in
+section
+#print axioms calculateAsertTarget_eq
+#print axioms never_traps
+#print axioms result_le_max
+#print axioms result_pos
+#print axioms result_zero_unscheduled
+#print axioms on_schedule
+#print axioms mono_timestamp
+#print axioms mono_height
+#print axioms mono_height_needs_schedule
+#print axioms targetOf_mono
+#print axioms half_life_doubling
+#print axioms targetOf_ease_whole
+#print axioms targetOf_harden_whole
+#print axioms targetOf_harden_deep
+#print axioms targetOf_harden_deep_strict
+#print axioms clamp_breaks_doubling
+#print axioms factor_upper
+#print axioms factor_lower
+#print axioms forward_shift
+#print axioms next_ignores_intervening
+#print axioms shift_does_not_compound
+#print axioms next_ignores_own_target
+#print axioms next_at_anchor
 end

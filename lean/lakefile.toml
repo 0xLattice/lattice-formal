@@ -7,3 +7,7 @@ name = "LatticeProofs"
 [[lean_exe]]
 name = "tracecheck"
 root = "TraceCheck"
+
+[[lean_exe]]
+name = "asertcheck"
+root = "AsertCheck"

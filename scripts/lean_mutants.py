@@ -177,6 +177,120 @@ MUTANTS = [
      "        if valR 32 ds.reverse / 4 / 2 ^ 256 = cidPrefix then", "Keys.lean"),
 ]
 
+# ASERT (Asert.lean). A mutant edits the Swift transcription and, where the
+# bug has one, the closed form the theorems are stated on (the same file),
+# and must be killed by what it names:
+# - a theorem: its proof must break (an error inside that declaration of
+#   AsertProofs.lean);
+# - "vectors": the transcription must disagree with, or trap on, a vector
+#   recorded from Lattice's `calculateAsertTarget`.
+# (name, theorem or None, killed by the vectors, [(old, new), ...])
+ASERT_TARGET_OF = """def targetOf (A : Nat) (e : Int) : Nat :=
+  if e / 65536 < 0 then
+    if 240 ≤ -(e / 65536) then 1
+    else atLeastOne (mdsC A (factorOf (e % 65536).toNat) (2 ^ ((-(e / 65536)).toNat + 16)))
+  else atLeastOne (easeOf (mdsC A (factorOf (e % 65536).toNat) 65536) (e / 65536))"""
+ASERT_MUTANTS = [
+    ("shift-truncates-instead-of-flooring", "targetOf_step", True, [
+        ("let doublings := exponent / 2 ^ asertFixedPointBits.toNat",
+         "let doublings := exponent.tdiv (2 ^ asertFixedPointBits.toNat)"),
+        (ASERT_TARGET_OF, ASERT_TARGET_OF.replace("e / 65536", "e.tdiv 65536"))]),
+    ("cubic-coefficient-typo", "factor_lower", True, [
+        ("def asertCubicB : Nat := 971821376", "def asertCubicB : Nat := 917821376")]),
+    ("no-floor-at-one", "targetOf_pos", True, [
+        ("""    return if scaled = 0 then 1 else scaled
+  let scaled ←""", """    return scaled
+  let scaled ←"""),
+        ("else atLeastOne (mdsC A (factorOf (e % 65536).toNat) (2 ^ ((-(e / 65536)).toNat + 16)))",
+         "else mdsC A (factorOf (e % 65536).toNat) (2 ^ ((-(e / 65536)).toNat + 16))")]),
+    ("no-halving-cutoff", "calculateAsertTarget_eq", True, [
+        ("    if ¬ halvings < asertMaximumDoublings - asertFixedPointBits then return 1\n", "")]),
+    ("no-ceiling-guard", "doubleLoop_eq", True, [
+        ("""    if scaled ≤ max256 / 2 then do
+      let s ← u256 (scaled * 2)
+      doubleLoop k s
+    else some max256""", """    do
+      let s ← u256 (scaled * 2)
+      doubleLoop k s""")]),
+    ("fraction-signed-remainder", "calculateAsertTarget_eq", True, [
+        ("let fraction ← toU64 (exponent % asertFixedPointOne)",
+         "let fraction ← toU64 (exponent.tmod asertFixedPointOne)")]),
+    ("elapsed-wraps-unsigned", "elapsedOf_mono", True, [
+        ("""  if later > earlier then
+    if earlier ≥ 0 ∨ later < 0 then do""", """  if true then some ((later - earlier) % 2 ^ 64).toNat else
+  if later > earlier then
+    if earlier ≥ 0 ∨ later < 0 then do"""),
+        ("  min (max (blockTimestamp - anchorTimestamp) 0) int64Max",
+         "  min ((blockTimestamp - anchorTimestamp) % 2 ^ 64) int64Max")]),
+    ("anchor-is-parent", "next_ignores_intervening", False, [
+        ("    let a ← anchorOf (b :: ancestors)", "    let a ← ancestors.head?")]),
+    ("exponent-floors-instead-of-truncating", None, True, [
+        ("if y = 0 ∨ (x = -2 ^ 63 ∧ y = -1) then none else some (x.tdiv y)",
+         "if y = 0 ∨ (x = -2 ^ 63 ∧ y = -1) then none else some (x / y)"),
+        ("(clampDrift drift * 65536).tdiv halfLifeMs", "(clampDrift drift * 65536) / halfLifeMs")]),
+]
+
+
+def failing_theorems(output, path):
+    """Names of the declarations in `path` that hold a build error."""
+    lines = path.read_text().splitlines()
+    starts = [(i + 1, m.group(1)) for i, l in enumerate(lines)
+              if (m := re.match(r"(?:theorem|lemma|def) (\S+)", l))]
+    names = set()
+    for n in re.findall(rf"error: (?:\S*/)?{re.escape(path.name)}:(\d+):\d+", output):
+        before = [name for start, name in starts if start <= int(n)]
+        if before:
+            names.add(before[-1])
+    return names
+
+
+def asert_mutants():
+    vectors = sorted(LEAN.parent.glob("traces/asert-*/*.json"))
+    failures = 0
+    for name, theorem, by_vectors, edits in ASERT_MUTANTS:
+        with tempfile.TemporaryDirectory() as d:
+            work = pathlib.Path(d) / "lean"
+            shutil.copytree(LEAN, work, symlinks=True)  # keep .lake: only Asert* rebuild
+            model = work / "LatticeProofs" / "Asert.lean"
+            text = model.read_text()
+            bad = [old for old, _ in edits if text.count(old) != 1]
+            if bad:
+                print(f"MUTANT {name}: replacement matched {[text.count(o) for o in bad]} times")
+                failures += 1
+                continue
+            for old, new in edits:
+                text = text.replace(old, new)
+            model.write_text(text)
+            killed = []
+            r = subprocess.run(["lake", "build", "LatticeProofs.AsertProofs", "asertcheck"],
+                               cwd=work, capture_output=True, text=True)
+            out = r.stdout + r.stderr
+            if re.search(r"error: (?:\S*/)?Asert\.lean:\d+:\d+", out):
+                print(f"MUTANT {name}: the mutated model does not compile")
+                failures += 1
+                continue
+            if theorem is not None:
+                if theorem in failing_theorems(out, work / "LatticeProofs" / "AsertProofs.lean"):
+                    killed.append(theorem)
+                else:
+                    print(f"MUTANT {name}: SURVIVED {theorem} (broke "
+                          f"{sorted(failing_theorems(out, work / 'LatticeProofs' / 'AsertProofs.lean'))})")
+                    failures += 1
+                    continue
+            if by_vectors:
+                r = subprocess.run(["lake", "build", "asertcheck"], cwd=work,
+                                   capture_output=True, text=True)
+                v = subprocess.run([str(work / ".lake/build/bin/asertcheck"), *map(str, vectors)],
+                                   capture_output=True, text=True)
+                if r.returncode == 0 and v.returncode == 1 and "FAIL" in v.stdout:
+                    killed.append("the vectors")
+                else:
+                    print(f"MUTANT {name}: SURVIVED the vectors")
+                    failures += 1
+                    continue
+            print(f"MUTANT {name}: killed by {' and '.join(killed)}")
+    return failures
+
 
 def proofs_break(work, file):
     r = subprocess.run(["lake", "build"], cwd=work, capture_output=True, text=True)
@@ -227,6 +341,7 @@ def main():
                 failures += 1
             else:
                 print(f"MUTANT {name}: killed by the {' and the '.join(sorted(results))}")
+    failures += asert_mutants()
     sys.exit(1 if failures else 0)
 
 
