@@ -24,6 +24,8 @@ jobs:
           - MCHierarchyFork_Main.cfg
           - MCSwapReorg_Main.cfg
           - MCSwapReorg_Replay.cfg
+          - MCRecovery_Main.cfg
+          - MCRecovery_Node.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -55,6 +57,12 @@ jobs:
             set -- $pair
             scripts/tlc.sh MCSwapReorg_$1.cfg | tee sw.log || true
             grep -q "Invariant $2 is violated" sw.log
+          done
+          for pair in "WLost NoLostBatchRecovered" "WConflict NoConflictRefused" \
+                      "WOrder RevisionMonotone" "RevisionProbe RevisionMonotone"; do
+            set -- $pair
+            scripts/tlc.sh "MCRecovery_$1.cfg" | tee r.log || true
+            grep -q "Invariant $2 is violated" r.log
           done
       - name: Planted bugs must be caught
         run: python3 scripts/mutants.py

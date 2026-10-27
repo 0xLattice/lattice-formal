@@ -745,6 +745,128 @@ cd lean && lake build                    # includes the Merkle proofs
 lake env lean LatticeProofs/Axioms.lean  # lists the Merkle theorems too
 ```
 
+## Import and recovery (`specs/Recovery.tla`)
+
+One node importing into one chain, crashing anywhere: spec §9.3 steps 8-9,
+§9.8, §9.9 (exclusions are replayed facts) and §12.5.11. Each import attempt
+is checked against the live graph under the mutation lease, staged as one
+immutable batch in a durable log, then applied to the in-memory graph through
+the reducer. A crash may fall between any two steps, during recovery
+included. It loses the graph, the projection, the revision and any commit in
+flight. Recovery replays the log through the same reducer, in any order the
+prerequisites allow, then reprojects and only then exposes the runtime. The
+genesis batch is staged before any runtime exists and appears only through
+that path.
+
+Batches are the implementation's kinds: a block (with its securing grind, and
+its validation in the eager tier), a work fact (a grind location or a
+strengthening of one), an exclusion, a validation. The weights and tip rule
+are `ForkChoice.tla`'s, restated over a graph value so a replayed graph and a
+live one can be compared.
+
+| Property | Kind | Spec |
+|---|---|---|
+| `RecoveredEqualsLive`: while the runtime is exposed, its graph, every weight and the tip equal what the durable prefix produces applied in staging order, minus a batch staged and not yet applied, whether built live or rebuilt by replay in any order; the tip is a projection of that graph | invariant | §9.3 "the same immutable facts through the same reducer", §9.8 |
+| `VisibleImpliesDurable`: nothing exposed is missing from the log, and no runtime exists before the genesis batch is durable | invariant | §9.3 "Durability MUST precede visible graph mutation", genesis bootstrap |
+| `ReplayIdempotent`: applying any durable batch again to the exposed graph changes nothing | invariant | §9.3, §9.8 "idempotently" |
+| `ConflictRejected`: the log never holds two metadata values for one block or one grind at two blocks, and the graph holds the durable metadata | invariant | §9.3, §9.1 |
+| `RevisionMonotone`: no exposed revision is lower than one exposed before a crash | invariant | §12.5.11 |
+| `RevisionAdvances`: every live mutation takes a strictly greater revision | action | §12.5.11 |
+| `FailureLeavesGraphUnchanged`: a failed durable write changes neither graph, tip nor revision | action | §9.3 |
+| `StagedBecomesVisible`: once crashes stop, the runtime comes up and every durable batch is visible, for good | liveness | §9.8 |
+
+The scenario (`specs/MCRecovery.tla`) is a root `r` with children `a` and
+`b`. The candidates move the tip at every step: `a`, then `b` (heavier), a
+grind located at `a` that ties them (CID decides), its strengthening, `a`'s
+deferred validation re-stating the strongest grind it holds (as
+`ChainTree.connectJob` builds it), an exclusion of `a`, a validation of `b`,
+and a block fact for `a` with different metadata, which the store must
+refuse. A work batch is staged only if strictly stronger than what is held
+(`addWork` returns a duplicate with no fact otherwise). Up to five batches,
+two crashes.
+
+| Config | Reading |
+|---|---|
+| `MCRecovery_Main.cfg` | the spec's: replay in any order, and staging records the batch's reserved revision (current + 1) as a durable floor |
+| `MCRecovery_Node.cfg` | `ChainTree.replay`'s sort order with no floor: what `ChainTree.restore` does when it is given none, as lattice-node did before adalinxx/lattice-node#22. Every property but `RevisionMonotone`, which fails here (finding below) |
+
+Witnesses, each of which must fail: `MCRecovery_WLost.cfg` reaches a crash
+between durable and visible, after which recovery shows the batch
+(`NoLostBatchRecovered`), and `MCRecovery_WConflict.cfg` reaches the store's
+refusal of conflicting metadata (`NoConflictRefused`).
+`MCRecovery_WOrder.cfg` drops the floor with replay in any order, and
+`RevisionMonotone` fails: replay that meets a strengthening before the
+weaker observation counts one mutation fewer than live import did. The
+implementation's sort alone does not close this (finding below), so the
+floor is what holds the property.
+
+### Planted bugs
+
+| Mutant | Must be caught by |
+|---|---|
+| the batch is applied when checked, before its durable write | `VisibleImpliesDurable` |
+| live import re-resolves the candidate after durability and applies what it finds (a stronger observation) | `RecoveredEqualsLive` |
+| a strengthening adds to the quantity instead of ratcheting it | `ReplayIdempotent` |
+| restore takes the persisted tip instead of reprojecting | `RecoveredEqualsLive` |
+| restore resets the revision | `RevisionMonotone` |
+| the floor is the pre-stage revision, not the one reserved for the batch | `RevisionMonotone` |
+| only new blocks take a revision | `RevisionAdvances` |
+| the store accepts a block fact with conflicting metadata | `ConflictRejected` |
+| a failed durable write keeps the batch applied | `FailureLeavesGraphUnchanged` |
+| an exclusion is staged but never applied live | `StagedBecomesVisible` |
+
+### Finding: revisions can go back across a restart
+
+Under the implementation's reading `RevisionMonotone` fails;
+`MCRecovery_RevisionProbe.cfg` is the minimal reproduction and must fail. A grind is strengthened at `a` (two work batches,
+each a mutation with its own revision); then `a`'s deferred validation is
+staged as a block batch that re-states the strongest grind the tree holds
+(`ChainTree.connectJob`), which live import applies as a duplicate. Replay
+sorts block batches before work batches, so that batch lands the grind at its
+final quantity in one mutation and both work batches replay as duplicates.
+The restored revision is one lower than the last one exposed whenever
+`ChainTree.restore` gets no `revisionFloor`. With the floor of
+`MCRecovery_Main.cfg` the probe passes. Since adalinxx/lattice-node#22,
+lattice-node passes the number of durable batches as the floor. That is at
+least the model's floor, the reserved revision `rev + 1` recorded at each
+stage, because every staged batch adds one row and takes at most one
+revision. That holds on a root level only; see the limits below.
+
+It needs two observations of one grind at one location with different
+quantities, which §9.1 allows ("strengthening"). Consensus is unaffected; the
+revision is the API's change counter.
+
+### Readings and limits
+
+- **The durable write is atomic.** lattice-node writes every fact of a step
+  in one SQLite transaction, and a conflicting fact ID rolls it back. So a
+  crash never leaves part of a batch durable. A partial write is not
+  modelled.
+- **One commit at a time.** The mutation lease covers check, stage and
+  apply, so the check cannot go stale before the apply. Preparation outside
+  the lease is folded into `Admissible`.
+- **Re-staging an identical or weaker batch** is not generated (the
+  implementation answers a duplicate with no fact); `ReplayIdempotent`
+  checks the re-application it would cause.
+- **Order of visibility.** The model follows Lattice's commit path (stage,
+  then apply). lattice-node's sans-IO core mutates its tree first and emits
+  the persist effect before any publish, send or mining effect, stopping the
+  process if the write fails. Nothing outside the step sees the tree before
+  the write, which is the state this model's `up` exposes.
+- **Revisions without a fact** are not modelled: `reevaluateForkChoice`
+  bumping on a projection change alone, and on a child level the bump
+  `applyParentRun` takes for each raised attributed run (§9.10), every turn
+  the node re-derives runs. No durable row records those run bumps, and
+  restore re-derives each run once, so a child level's restored revision can
+  still fall below the last one exposed, even with lattice-node's floor.
+  lattice-node reports no revision to clients. Validations take no revision,
+  as in the implementation.
+- **Static verdicts and prerequisites.** Proof checks, execution and target
+  rules are folded into which batches exist and `Admissible`. Orphans
+  (blocks staged before their parent) are not generated.
+- **Small scope:** three blocks, nine candidate batches, five durable
+  batches, two crashes.
+
 ## Roadmap
 
 1. **Lean:** cashew's batch transform, that its output is canonical (closes
