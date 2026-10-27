@@ -306,12 +306,18 @@ theorem chain_from_empty (ho : StrictOrder K) {bs : List (Root K V D × List (Li
 
 /-! ## The receipt sub-state of the value model (§6.5) -/
 
+/-- `enc` is injective on the keys `P` admits. The implementation's receipt
+encoding is a hash, so it is injective on no infinite set; `P` is the finite
+set of keys in play (`KeysProofs.receipts_commit_path`). -/
+def InjOn {κ : Type} (enc : κ → List K) (P : κ → Prop) : Prop :=
+  ∀ x y, P x → P y → enc x = enc y → x = y
+
 /-- A model map read through the implementation's storage-key encoding
-(`ReceiptKey.storageKey` for receipts): `M` holds what `m` holds, at encoded
-keys, and nothing else. -/
-def Represents {κ : Type} [DecidableEq κ] (enc : κ → List K) (M : List K → Option V)
-    (m : Lattice.Map κ V) : Prop :=
-  (∀ x, M (enc x) = m.get? x) ∧ ∀ k, (∀ x, enc x ≠ k) → M k = none
+(`ReceiptKey.storageKey` for receipts), on the keys `P` admits: `M` holds
+what `m` holds at their encodings, and nothing at any other key. -/
+def Represents {κ : Type} [DecidableEq κ] (enc : κ → List K) (P : κ → Prop)
+    (M : List K → Option V) (m : Lattice.Map κ V) : Prop :=
+  (∀ x, P x → M (enc x) = m.get? x) ∧ ∀ k, (∀ x, P x → enc x ≠ k) → M k = none
 
 /-- The trie writes a block's receipt actions make: an insertion each. -/
 def receiptWrites (enc : ReceiptKey → List K) : List Action → List (List K × Op Address)
@@ -319,53 +325,66 @@ def receiptWrites (enc : ReceiptKey → List K) : List Action → List (List K �
   | .receipt w n dm amtD d :: as => (enc ⟨d, dm, amtD, n⟩, .insert w) :: receiptWrites enc as
   | _ :: as => receiptWrites enc as
 
-theorem represents_set {κ : Type} [DecidableEq κ] {enc : κ → List K}
-    (henc : Function.Injective enc) {M : List K → Option V} {m : Lattice.Map κ V}
-    (h : Represents enc M m) (x : κ) (v : V) :
-    Represents enc (fun k' => if k' = enc x then some v else M k') (m.set x v) := by
-  refine ⟨fun y => ?_, fun k hk => ?_⟩
+/-- Every key a receipt action of `as` inserts is admitted by `P`. -/
+def ReceiptKeysIn (P : ReceiptKey → Prop) (as : List Action) : Prop :=
+  ∀ w n dm amtD d, Action.receipt w n dm amtD d ∈ as → P ⟨d, dm, amtD, n⟩
+
+theorem represents_set {κ : Type} [DecidableEq κ] {enc : κ → List K} {P : κ → Prop}
+    (henc : InjOn enc P) {M : List K → Option V} {m : Lattice.Map κ V}
+    (h : Represents enc P M m) (x : κ) (hx : P x) (v : V) :
+    Represents enc P (fun k' => if k' = enc x then some v else M k') (m.set x v) := by
+  refine ⟨fun y hy => ?_, fun k hk => ?_⟩
   · rw [Map.get?_set]
-    by_cases hy : y = x
-    · subst hy; simp
-    · have : enc y ≠ enc x := fun e => hy (henc e)
-      simp [this, hy, h.1 y]
-  · have : k ≠ enc x := fun e => hk x e.symm
+    by_cases e : y = x
+    · subst e; simp
+    · have : enc y ≠ enc x := fun e' => e (henc y x hy hx e')
+      simp [this, e, h.1 y hy]
+  · have : k ≠ enc x := fun e => hk x hx e.symm
     simp [this, h.2 k hk]
 
-theorem receipts_writes {enc : ReceiptKey → List K} (henc : Function.Injective enc) :
+theorem receipts_writes {enc : ReceiptKey → List K} {P : ReceiptKey → Prop}
+    (henc : InjOn enc P) :
     ∀ (as : List Action) {M : List K → Option Address} {m m' : Lattice.Map ReceiptKey Address},
-      Represents enc M m → applyReceipts m as = some m' →
-      ∃ M', applyAllMap (receiptWrites enc as) M = some M' ∧ Represents enc M' m'
-  | [], M, m, m', hr, h => by
+      ReceiptKeysIn P as → Represents enc P M m → applyReceipts m as = some m' →
+      ∃ M', applyAllMap (receiptWrites enc as) M = some M' ∧ Represents enc P M' m'
+  | [], M, m, m', _, hr, h => by
     simp only [applyReceipts, Option.some.injEq] at h; subst h; exact ⟨M, rfl, hr⟩
-  | .receipt w n dm amtD d :: as, M, m, m', hr, h => by
+  | .receipt w n dm amtD d :: as, M, m, m', hP, hr, h => by
     simp only [applyReceipts] at h
+    have hx : P ⟨d, dm, amtD, n⟩ := hP w n dm amtD d (List.mem_cons_self ..)
+    have hP' : ReceiptKeysIn P as := fun w n dm amtD d h => hP w n dm amtD d (List.mem_cons_of_mem _ h)
     split at h
     · next hc =>
-      have hM : M (enc ⟨d, dm, amtD, n⟩) = none := by rw [hr.1]; exact hc.1
-      obtain ⟨M', e1, e2⟩ := receipts_writes henc as (represents_set henc hr _ w) h
+      have hM : M (enc ⟨d, dm, amtD, n⟩) = none := by rw [hr.1 _ hx]; exact hc.1
+      obtain ⟨M', e1, e2⟩ := receipts_writes henc as hP' (represents_set henc hr _ hx w) h
       refine ⟨M', ?_, e2⟩
       simp only [receiptWrites, applyAllMap, Op.applyMap, hM]
       exact e1
     · cases h
-  | .account _ _ :: as, M, m, m', hr, h => receipts_writes henc as hr h
-  | .deposit _ _ _ _ :: as, M, m, m', hr, h => receipts_writes henc as hr h
-  | .withdrawal _ _ _ _ _ :: as, M, m, m', hr, h => receipts_writes henc as hr h
+  | .account _ _ :: as, M, m, m', hP, hr, h =>
+    receipts_writes henc as (fun w n dm amtD d h => hP w n dm amtD d (List.mem_cons_of_mem _ h)) hr h
+  | .deposit _ _ _ _ :: as, M, m, m', hP, hr, h =>
+    receipts_writes henc as (fun w n dm amtD d h => hP w n dm amtD d (List.mem_cons_of_mem _ h)) hr h
+  | .withdrawal _ _ _ _ _ :: as, M, m, m', hP, hr, h =>
+    receipts_writes henc as (fun w n dm amtD d h => hP w n dm amtD d (List.mem_cons_of_mem _ h)) hr h
 
 /-- §6.5, §12.1 for the receipt sub-state: if `prevState`'s receipt root is
-that of a canonical trie holding the model's receipts, a block whose receipt
-writes verify against a partial trie of that root leaves a root that commits
-to exactly the receipts `applyReceipts` produces. -/
+that of a canonical trie holding the model's receipts (at the encodings of the
+keys `P` admits), a block whose receipt writes verify against a partial trie of
+that root leaves a root that commits to exactly the receipts `applyReceipts`
+produces. The encoding need only be injective on `P`, which holds every key
+the block inserts. -/
 theorem receipts_commit {H : Enc K Address D → D} (ho : StrictOrder K)
-    {enc : ReceiptKey → List K} (henc : Function.Injective enc)
+    {enc : ReceiptKey → List K} {P : ReceiptKey → Prop} (henc : InjOn enc P)
     {m m' : Lattice.Map ReceiptKey Address} {as : List Action} {s p p' : Root K Address D}
-    (hs : s.Canon) (hr : Represents enc s.toMap m) (hd : p.digest H = s.digest H)
+    (hP : ReceiptKeysIn P as)
+    (hs : s.Canon) (hr : Represents enc P s.toMap m) (hd : p.digest H = s.digest H)
     (hH : NoCollision H (Root.RunHasEnc H (receiptWrites enc as) p)
       (Root.RunHasEnc H (receiptWrites enc as) s))
     (hp : p.applyAll (receiptWrites enc as) = some p') (hm : applyReceipts m as = some m') :
-    ∃ M', Commits H (p'.digest H) M' ∧ Represents enc M' m' := by
+    ∃ M', Commits H (p'.digest H) M' ∧ Represents enc P M' m' := by
   obtain ⟨s', -, e2, e3, e4⟩ := block_commits ho hs hd hH hp
-  obtain ⟨M2, f1, f2⟩ := receipts_writes henc as hr hm
+  obtain ⟨M2, f1, f2⟩ := receipts_writes henc as hP hr hm
   rw [e3] at f1; cases f1
   exact ⟨s'.toMap, ⟨s', e2, rfl, e4.symm⟩, f2⟩
 
