@@ -5,7 +5,7 @@ validation of the implementation against them, and Lean proofs of value
 conservation and of the Merkle state commitments.
 
 The models are written from the normative specification
-([Lattice `docs/spec.md`](https://github.com/adalinxx/Lattice/blob/main/docs/spec.md)),
+([Lattice `docs/spec.md`](https://github.com/0xLattice/Lattice/blob/main/docs/spec.md)),
 not from the implementation. A passing check means the listed properties hold
 for every interleaving of the modelled facts, within the model's bounds and
 abstractions. It does not mean Lattice is bug-free.
@@ -221,7 +221,7 @@ by `ForkChoice.tla`.
   transition is checked against the block's declared `parentState`, so a
   failure there makes the block invalid whatever continuity concludes. The
   model excludes it even while its anchor is held; Lattice does the same, and
-  the spec says so since adalinxx/Lattice#36.
+  the spec says so since 0xLattice/Lattice#36.
 - **A sideways anchor is held, never a verdict.** §9.5: a child "anchoring
   elsewhere is anchoring at something this parent has not checked, and the
   correct answer is the retriable 'not proven here', not a verdict". State
@@ -360,8 +360,8 @@ spec acts on the executed root.
   heavier competing genesis whose body is withheld left every node with no
   act-on tip.
 
-Fixed in Lattice 53.2.0 (adalinxx/Lattice#35), with the node's body scheduler,
-mempool spec and boot walk following the same rule (adalinxx/lattice-node#15).
+Fixed in Lattice 53.2.0 (0xLattice/Lattice#35), with the node's body scheduler,
+mempool spec and boot walk following the same rule (0xLattice/lattice-node#15).
 The regenerated traces differ from the old ones only in the act-on tip of those
 7 traces.
 
@@ -585,7 +585,7 @@ Checking the model against the implementation found two rules the spec did
 not state, and the model lacked one of them: a receipt needs a nonzero
 `amountDemanded`, and a block's account deltas, explicit, receipt-derived and
 the coinbase alike, net per owner before any balance moves. The spec states
-both since adalinxx/Lattice#40, and the model has the receipt rule.
+both since 0xLattice/Lattice#40, and the model has the receipt rule.
 
 ### Planted bugs
 
@@ -998,7 +998,7 @@ two crashes.
 | Config | Reading |
 |---|---|
 | `MCRecovery_Main.cfg` | the spec's: replay in any order, and staging records the batch's reserved revision (current + 1) as a durable floor |
-| `MCRecovery_Node.cfg` | `ChainTree.replay`'s sort order with no floor: what `ChainTree.restore` does when it is given none, as lattice-node did before adalinxx/lattice-node#22. Every property but `RevisionMonotone`, which fails here (finding below) |
+| `MCRecovery_Node.cfg` | `ChainTree.replay`'s sort order with no floor: what `ChainTree.restore` does when it is given none, as lattice-node did before 0xLattice/lattice-node#22. Every property but `RevisionMonotone`, which fails here (finding below) |
 
 Witnesses, each of which must fail: `MCRecovery_WLost.cfg` reaches a crash
 between durable and visible, after which recovery shows the batch
@@ -1036,7 +1036,7 @@ sorts block batches before work batches, so that batch lands the grind at its
 final quantity in one mutation and both work batches replay as duplicates.
 The restored revision is one lower than the last one exposed whenever
 `ChainTree.restore` gets no `revisionFloor`. With the floor of
-`MCRecovery_Main.cfg` the probe passes. Since adalinxx/lattice-node#22,
+`MCRecovery_Main.cfg` the probe passes. Since 0xLattice/lattice-node#22,
 lattice-node passes the number of durable batches as the floor. That is at
 least the model's floor, the reserved revision `rev + 1` recorded at each
 stage, because every staged batch adds one row and takes at most one
