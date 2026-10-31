@@ -7,7 +7,8 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
            MCHierarchy_Main.cfg MCHierarchy_ParentBad.cfg MCHierarchy_P1Gap.cfg MCHierarchy_HeldInvalid.cfg MCHierarchy_HeaderBad.cfg \
            MCHierarchy3_Main.cfg MCHierarchyFork_Main.cfg \
            MCSwapReorg_Main.cfg MCSwapReorg_Replay.cfg \
-           MCRecovery_Main.cfg MCRecovery_Node.cfg; do
+           MCRecovery_Main.cfg MCRecovery_Node.cfg \
+           DerivedChildGrinds_Main.cfg DerivedChildGrinds_AuthorHeld.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
@@ -22,13 +23,23 @@ for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBacke
             "MCSwapReorg_WTwoBranches.cfg ReleasedOnOneBranch" "MCSwapReorg_WRedeem.cfg NoRedeemAfterReorg" \
             "MCSwapReorg_WDemanderSafe.cfg NoSafeReleaseBesideParentFork" \
             "MCRecovery_WLost.cfg NoLostBatchRecovered" "MCRecovery_WConflict.cfg NoConflictRefused" \
-            "MCRecovery_WOrder.cfg RevisionMonotone" "MCRecovery_RevisionProbe.cfg RevisionMonotone"; do
+            "MCRecovery_WOrder.cfg RevisionMonotone" "MCRecovery_RevisionProbe.cfg RevisionMonotone" \
+            "DerivedChildGrinds_Credit.cfg NoCredit"; do
   set -- $pair
   out="$("$root/scripts/tlc.sh" "$1" 2>&1)"
   if grep -q "Invariant $2 is violated" <<<"$out"; then
     echo "WITNESS $1: reached ($2 violated, as required)"
   else
     echo "WITNESS $1: NOT reached"; failures=$((failures + 1))
+  fi
+done
+# Liveness findings: each must FAIL (TLC names no property; the cfg checks one).
+for cfg in DerivedChildGrinds_AuthorStored.cfg; do
+  out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
+  if grep -q "Temporal properties were violated" <<<"$out"; then
+    echo "WITNESS $cfg: reached (liveness violated, as required)"
+  else
+    echo "WITNESS $cfg: NOT reached"; failures=$((failures + 1))
   fi
 done
 python3 "$root/scripts/mutants.py" || failures=$((failures + 1))

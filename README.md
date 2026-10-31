@@ -1076,6 +1076,57 @@ revision is the API's change counter.
   (blocks staged before their parent) are not generated.
 - **Small scope:** three blocks, nine candidate batches, five durable
   batches, two crashes.
+## Derived child grinds (`specs/DerivedChildGrinds.tla`)
+
+One node crediting a hosted child chain's blocks with the grinds of the
+parent blocks (carriers) that commit them, push only: the node never fetches a
+child block. Its bytes are in the node's store (it is the author) or arrive by
+gossip, with or without a peer proof. Three carriers commit two child blocks
+(`B1`, `B2` commit `C1`; `B3` commits `C2`); `B1` has one grind that meets the
+target and one that misses.
+
+A carrier weighed issues a derivation of it at the block it commits, carrying
+the block's bytes if known, else as a read of the local store. A block that
+arrives (by gossip or by that read) issues a derivation of every weighed
+carrier committing it. Derivations answer in any order; answers are always
+applied, credit is idempotent, nothing deduplicates. A per-block count of
+derivations guards an awaiting block (capacity 1) from eviction. Peers send
+real or bogus proofs and may be purged; the node restarts (losing jobs, counts,
+awaiting blocks and peer proofs) and the chain is unhosted and re-hosted
+(losing the same but the jobs, which answer into the new level), at most once
+each. The boot pass takes every held block as arrived.
+
+| Property | Kind |
+|---|---|
+| `Safety`: every credited grind belongs to a weighed carrier committing the block and meets its target | invariant |
+| `QuiescentFull`: no derivation in flight, a block held and its author done ⇒ fully credited | invariant |
+| `Converges`: with every derivation answering and the author re-gossiping until credited (weak fairness), every block ends fully credited | liveness |
+
+| Config | Scenario |
+|---|---|
+| `DerivedChildGrinds_Main.cfg` | both blocks authored elsewhere and pushed by gossip |
+| `DerivedChildGrinds_AuthorHeld.cfg` | the node authored `C1`, which is held (a boot-pass block) from the start |
+
+Witnesses, each of which must fail: `DerivedChildGrinds_Credit.cfg` reaches a
+credit (`NoCredit`), and `DerivedChildGrinds_AuthorStored.cfg` (finding below)
+violates `Converges`.
+
+### Planted bugs
+
+| Mutant | Must be caught by |
+|---|---|
+| no derivation on arrival | `Converges` |
+| a derivation is skipped while one of the same carrier is in flight | `Converges` |
+| an answer is applied only while its block's count is above zero | `Converges` |
+
+### Finding: an authored block that is only stored
+
+If the node's own block is in its store but not held, `Converges` fails and
+`QuiescentFull` passes vacuously: the block is never held. The carrier is
+weighed while the chain is unhosted (or its store read is lost to a restart);
+on re-host the boot pass takes only held blocks, and no author re-gossips the
+block to its own node, so nothing reads it again.
+
 ## ASERT difficulty (`lean/LatticeProofs/Asert.lean`)
 
 §5.5 schedules each block's `nextTarget` from one anchor (the height-1

@@ -15,7 +15,8 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp", "NothingPruned",
-            "RevisionAdvances", "FailureLeavesGraphUnchanged", "StagedBecomesVisible"}
+            "RevisionAdvances", "FailureLeavesGraphUnchanged", "StagedBecomesVisible",
+            "Converges"}
 
 # (name, property that must go red, config, file, old text, new text)
 MUTANTS = [
@@ -160,6 +161,15 @@ MUTANTS = [
      "    /\\ mem' = Apply(mem, cur.x)\n    /\\ UNCHANGED <<log, floor, ptip, tip, rev, up, rec, crashes, seen, lost>>"),
     ("exclusion-staged-never-applied-live", "StagedBecomesVisible", "MCRecovery_Main.cfg", "Recovery.tla",
      "    /\\ up /\\ cur.p = \"durable\"\n", "    /\\ up /\\ cur.p = \"durable\" /\\ cur.x.k # \"excl\"\n"),
+
+    # Derived child grinds (DerivedChildGrinds.tla): earlier lattice-node bugs.
+    ("no-arrival-trigger", "Converges", "DerivedChildGrinds_Main.cfg", "DerivedChildGrinds.tla",
+     "ArrivalJobs(arr) == ArrivalKeys(arr)", "ArrivalJobs(arr) == {}"),
+    ("dedup-in-flight-derivation", "Converges", "DerivedChildGrinds_Main.cfg", "DerivedChildGrinds.tla",
+     "Issued(js, S) == S",
+     r"Issued(js, S) == {k \in S : ~\E j \in JobKeys : j[1] = k[1] /\ js[j] > 0}"),
+    ("apply-only-while-counted", "Converges", "DerivedChildGrinds_Main.cfg", "DerivedChildGrinds.tla",
+     "Applies(dv, c) == TRUE", "Applies(dv, c) == dv[c] > 0"),
 ]
 
 
