@@ -1083,13 +1083,18 @@ parent-level blocks (carriers) that commit them, push only: the node never
 fetches a child block. A block enters only by gossip, with or without a peer
 proof, or by its author's local submit, which is gossip from no peer. Three
 carriers commit two child blocks (`B1`, `B2` commit `C1`; `B3` commits `C2`);
-`B1` has one grind that meets the target and one that misses. `C1`'s parent
-is the child genesis (in the tree); `C2`'s parent is `C1`.
+`B1` and `B3` each have one grind that meets the committed block's target and
+one that misses. `C1`'s parent is the child genesis (in the tree); `C2`'s
+parent is `C1`.
 
 A block is unknown, awaiting (in memory, capacity `Cap`), pending (in memory:
 credited, waiting for its parent to be in the tree; the pending budget may
 evict one) or in the tree (durable, with its credits). Its first credit
 promotes it from awaiting to pending, and it is weighed once its parent is.
+With `DeferSettle` a credited block may stay pending after its parent is in
+the tree (`C1` pending above the genesis, as a pending header waits for its
+child index or its timestamp) until a separate, weakly fair settle step
+weighs it.
 
 A carrier weighed, or credited another grind, derives the block it commits if
 that block is known; an unknown block issues nothing (no store read). A block
@@ -1110,6 +1115,35 @@ proofs) and levels are unhosted and re-hosted (losing the same but the jobs),
 each a bounded number of times. The author submits or gossips its block until
 it is in the tree.
 
+With `ParentsFetched` only the leaf `C2` is pushed (by its author and by
+peers with its real proof); `C1` comes in only as the answer to the one
+ancestor request a block makes when it is promoted to pending with its parent
+unknown. The node takes that answer only if the parent is wanted (a waiting
+or pending block names it) and never asks again. The code asks only a
+block's source peer, so a locally submitted block asks nothing; the model
+lets every promotion ask, as if each block had a live source.
+
+### Assumptions
+
+`Converges` is claimed only under these:
+
+- **(A1)** no operator finality window, or only blocks within it: a block
+  past finality is declined and is not weighed here.
+- **(A2)** the author submits its block with inline children, so a pending
+  block never waits on a child-index fetch.
+- **(A3)** pending-budget pressure eventually leaves room: pending evictions
+  are bounded (`MaxEvicts`). This is a known limit of the existing node
+  sync: the budget evicts the largest-hash pending leaf and orphans never
+  expire, so unbounded pressure can evict the same block forever. The
+  `unbounded-evict` mutant removes the bound and breaks `Converges`.
+- **(A4)** failing proofs and purges (`MaxStrikes`), restarts
+  (`MaxRestarts`) and unhosts (`MaxUnhosts`) are bounded.
+
+Two existing sync limits are outside the model and slated for a follow-up
+node PR: a failed children-index fetch drops pending entries, which (A2) is
+what excludes, and the per-peer awaiting cap refuses a peer's headers past
+it.
+
 | Property | Kind |
 |---|---|
 | `Safety`: every credited grind is one some verified root carries for the block and meets its target, whether or not the carrier is weighed | invariant |
@@ -1125,6 +1159,8 @@ it is in the tree.
 | `DerivedChildGrinds_AuthorPush.cfg` | as `Main` with two restarts and two unhosts: an author's block missed while the level is down converges by the author's push |
 | `DerivedChildGrinds_Grow.cfg` | carriers in a child level `X` whose grinds grow; `X` (with this level) or this level unhosted |
 | `DerivedChildGrinds_PeerPush.cfg` | honest peers push both blocks with real proofs |
+| `DerivedChildGrinds_Defer.cfg` | as `Main` with `DeferSettle`: a credited block stays pending above a tree parent until a fair settle step |
+| `DerivedChildGrinds_Parent.cfg` | `ParentsFetched`: only `C2` is pushed, `C1` arrives only as a one-shot ancestor answer; one restart, unhost, eviction and strike |
 
 Witnesses, each of which must fail: `DerivedChildGrinds_Credit.cfg` reaches a
 credit (`NoCredit`), and `DerivedChildGrinds_StopOnCredit.cfg` (finding below)
@@ -1152,6 +1188,21 @@ level, whose own convergence is this model one level up.
 | the author stops at the first credit | `Converges` |
 | a carrier's new grind does not re-trigger | `Converges` (`Grow`) |
 | pending blocks survive a restart | `StopOnCredit` passes |
+| a derivation that credits nothing still promotes its block | `CreditHeld` (`Grow`) |
+| the pending budget evicts a block with a pending child | `Converges` (`Parent`) |
+| a block a waiting or pending block names as parent is not wanted | `Converges` (`Parent`) |
+| pending evictions unbounded (assumption A3 dropped) | `Converges` |
+| weighing a carrier does not trigger derivation | `Converges` |
+| a carrier weighed derives only awaiting and pending blocks, not tree ones | `Converges` |
+| a pending block is weighed whatever its parent | `CreditHeld` |
+| a peer proof is credited without its check | `Safety` (`PeerPush`) |
+| an arrival never evicts a waiting block | `Converges` |
+
+Two changes are equivalent optimisations, not bugs, and are left out:
+deriving a carrier's every grind rather than those not yet credited (the
+extra credit is idempotent), and applying an answer while the level is
+unhosted (the re-host's boot pass derives its tree blocks again). Neither
+changes any property.
 
 Skipping a derivation while one of the same carrier is in flight is harmless
 with root carriers: both carry the same grinds. Only a grind credited between
@@ -1168,7 +1219,10 @@ derivation count and queued peer proofs and every derivation in flight.
 Every scenario test is traced, and `testRandomInterleavingsCreditEveryOwedGrind`
 traces 50 seeded interleavings (two children, C2 on C1, three root carriers
 one of whose grinds never credits; odd seeds await one header at a time,
-every third keeps room for one pending header). With `DERIVED_TRACE_DIR` set,
+every third keeps room for one pending header). Their actions include a
+peer re-sending a header the host already holds with a real or failing
+proof (it logs the proof, the host asks for it and takes the held header
+with that proof), as does one scenario test. With `DERIVED_TRACE_DIR` set,
 each trace is written as `trace-<name>.json`.
 
 `scripts/derived_trace_check.py` replays each through `DerivedChildGrinds`
@@ -1185,17 +1239,19 @@ the initial state:
 One host step can be several actions (a failed check, then a purge as its
 peer is disconnected; a pending eviction beside a promotion): it becomes those
 events, and only the last carries the state. Issuing a derivation is part of
-the action that triggers it, as in the spec. Two scenario tests reach into the
+the action that triggers it, as in the spec. The code settles a credited
+block in the step that credits it, so the replay runs with `DeferSettle` and
+`ParentsFetched` off (ancestor answers are not traced). Two scenario tests reach into the
 core outside any step (clearing derivation counts, filling the awaiting set):
 those are `tamper` events, whose logged state the replay adopts.
 
 ```sh
-scripts/derived_trace_check.py traces/derived-4f0fcc3
-scripts/derived_trace_check.py --selftest traces/derived-4f0fcc3/trace-random-9.json
+scripts/derived_trace_check.py traces/derived-429b4bf
+scripts/derived_trace_check.py --selftest traces/derived-429b4bf/trace-random-9.json
 ```
 
-`traces/derived-4f0fcc3/` holds 81 traces (lattice-node PR #39 at `4f0fcc3`):
-31 from the scenario tests and 50 random. All conform. The self-test
+`traces/derived-429b4bf/` holds 82 traces (lattice-node PR #39 at `429b4bf`):
+32 from the scenario tests and 50 random. All conform. The self-test
 corrupts a credit, a status, a count and the jobs in flight, reports a taken
 gossip as refused and answers a derivation before it was issued, and
 requires each to be caught. Planted bugs in the model fail the traces: an

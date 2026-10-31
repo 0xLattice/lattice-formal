@@ -195,6 +195,27 @@ MUTANTS = [
     ("pending-not-lost-on-restart", "Converges", "DerivedChildGrinds_StopOnCredit.cfg", DCG,
      "    /\\ restarts' = restarts + 1\n    /\\ Lose(Durable(status))",
      "    /\\ restarts' = restarts + 1\n    /\\ Lose(Durable(status) \\cup {c \\in Children : status[c] = \"pending\"})", True),
+    ("promote-on-empty-answer", "CreditHeld", "DerivedChildGrinds_Grow.cfg", DCG,
+     'IF P # {} /\\ st[c] = "awaiting"', 'IF st[c] = "awaiting"'),
+    ("evict-non-leaf", "Converges", "DerivedChildGrinds_Parent.cfg", DCG,
+     '         /\\ ~\\E x \\in Children : Parent[x] = v /\\ status[x] = "pending"\n', ""),
+    ("wanted-no-parent-clause", "Converges", "DerivedChildGrinds_Parent.cfg", DCG,
+     'Wanted(c) == Committers(c) # {} \\/ \\E x \\in Children : Parent[x] = c /\\ status[x] \\in {"awaiting", "pending"}',
+     "Wanted(c) == Committers(c) # {}"),
+    # Removes the MaxEvicts bound: documents assumption (A3).
+    ("unbounded-evict", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     "    /\\ evicts' = evicts + 1\n", "    /\\ evicts' = evicts\n"),
+    ("weigh-no-retrigger", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     "            /\\ Retrigger(b, cg)\n    /\\ UNCHANGED <<status,",
+     "            /\\ UNCHANGED <<jobs, deriving>>\n    /\\ UNCHANGED <<status,"),
+    ("derive-skips-tree", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r"b \in {x \in B : Known(st, Commit[x])", r'b \in {x \in B : st[Commit[x]] \in {"awaiting", "pending"}'),
+    ("settle-ignores-parent", "CreditHeld", "DerivedChildGrinds_Main.cfg", DCG,
+     'IF st[c] = "pending" /\\ (Parent[c] = "genesis" \\/ st[Parent[c]] = "tree")', 'IF st[c] = "pending"'),
+    ("peer-proof-unchecked", "Safety", "DerivedChildGrinds_PeerPush.cfg", DCG,
+     r"IF Valid(c, p) /\ Known(status, c)", r"IF Known(status, c)"),
+    ("admit-never-evicts", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r"    ELSE {[x \in Children |-> IF x = c", r"    ELSE {} \cap {[x \in Children |-> IF x = c"),
 ]
 
 

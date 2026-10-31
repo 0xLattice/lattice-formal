@@ -103,6 +103,8 @@ CONSTANTS
     Grow = {tla(t["grow"])}
     PeerPush = FALSE
     AuthorStopsOnCredit = FALSE
+    DeferSettle = FALSE
+    ParentsFetched = FALSE
     MaxRestarts = {BOUND}
     MaxUnhosts = {BOUND}
     MaxEvicts = {BOUND}
