@@ -26,6 +26,12 @@ jobs:
           - MCSwapReorg_Replay.cfg
           - MCRecovery_Main.cfg
           - MCRecovery_Node.cfg
+          - DerivedChildGrinds_Main.cfg
+          - DerivedChildGrinds_Defer.cfg
+          - DerivedChildGrinds_Parent.cfg
+          - DerivedChildGrinds_AuthorPush.cfg
+          - DerivedChildGrinds_Grow.cfg
+          - DerivedChildGrinds_PeerPush.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -64,6 +70,10 @@ jobs:
             scripts/tlc.sh "MCRecovery_$1.cfg" | tee r.log || true
             grep -q "Invariant $2 is violated" r.log
           done
+          scripts/tlc.sh DerivedChildGrinds_Credit.cfg | tee dc.log || true
+          grep -q "Invariant NoCredit is violated" dc.log
+          scripts/tlc.sh DerivedChildGrinds_StopOnCredit.cfg | tee ds.log || true
+          grep -q "Temporal properties were violated" ds.log
       - name: Planted bugs must be caught
         run: python3 scripts/mutants.py
 
@@ -87,6 +97,10 @@ jobs:
         run: python3 scripts/hierarchy_trace_check.py --selftest traces/hierarchy3-8c60c39/trace-10.json
       - name: Three-level implementation traces with header-rule exclusions conform to the spec
         run: python3 scripts/hierarchy_trace_check.py traces/hierarchy3-8c60c39
+      - name: The derived-grind trace checker catches corrupted traces
+        run: python3 scripts/derived_trace_check.py --selftest traces/derived-429b4bf/trace-random-1.json
+      - name: lattice-node derived-child-grind traces conform to the spec
+        run: python3 scripts/derived_trace_check.py traces/derived-429b4bf
 
   lean:
     runs-on: ubuntu-latest

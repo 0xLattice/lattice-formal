@@ -8,8 +8,8 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
            MCHierarchy3_Main.cfg MCHierarchyFork_Main.cfg \
            MCSwapReorg_Main.cfg MCSwapReorg_Replay.cfg \
            MCRecovery_Main.cfg MCRecovery_Node.cfg \
-           DerivedChildGrinds_Main.cfg DerivedChildGrinds_AuthorPush.cfg DerivedChildGrinds_Grow.cfg \
-           DerivedChildGrinds_PeerPush.cfg; do
+           DerivedChildGrinds_Main.cfg DerivedChildGrinds_Defer.cfg DerivedChildGrinds_Parent.cfg \
+           DerivedChildGrinds_AuthorPush.cfg DerivedChildGrinds_Grow.cfg DerivedChildGrinds_PeerPush.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
