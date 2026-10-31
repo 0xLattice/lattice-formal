@@ -279,9 +279,10 @@ Arrive(c) ==
 \* Over the budget a proof is dropped without blame: its hole stays lacking.
 Drop(c, p) == lack' = lack \cup {<<c, p>>} /\ UNCHANGED honest
 
-\* Queue p for c within the operator's total budget, or drop it.
+\* Queue p for c within the operator's total budget, or drop it (a proof
+\* already queued is the same proof, not another).
 Offer(c, p) ==
-    IF QSize(peerQ) < QBudget
+    IF p \in peerQ[c] \/ QSize(peerQ) < QBudget
       THEN /\ peerQ' = [peerQ EXCEPT ![c] = @ \cup {p}]
            /\ lack' = lack \ {<<c, p>>}
            /\ UNCHANGED honest

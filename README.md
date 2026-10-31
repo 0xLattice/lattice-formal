@@ -1283,7 +1283,7 @@ now weighs, with `C2`, before the budget runs. The self-test
 corrupts a credit, a status, a count and the jobs in flight, reports a taken
 gossip as refused and answers a derivation before it was issued, and
 requires each to be caught. Planted bugs in the model fail the traces: an
-answer applied only while its count is above zero fails 1 of 82 (the
+answer applied only while its count is above zero fails 1 of 83 (the
 outlived-derivation test), eviction ignoring derivations in flight fails 3,
 no derivation on arrival fails 74, and deriving a fully credited pair fails
 29.
