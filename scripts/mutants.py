@@ -16,9 +16,10 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp", "NothingPruned",
             "RevisionAdvances", "FailureLeavesGraphUnchanged", "StagedBecomesVisible",
-            "Converges"}
+            "Converges", "PeerConverges"}
 
-# (name, property that must go red, config, file, old text, new text)
+# (name, property that must go red, config, file, old text, new text[, witness])
+DCG = "DerivedChildGrinds.tla"
 MUTANTS = [
     # Single-chain fork choice (ForkChoice.tla)
     ("exclusion-removes-weight", "WorkMonotone", "MCMain.cfg", "ForkChoice.tla",
@@ -162,18 +163,42 @@ MUTANTS = [
     ("exclusion-staged-never-applied-live", "StagedBecomesVisible", "MCRecovery_Main.cfg", "Recovery.tla",
      "    /\\ up /\\ cur.p = \"durable\"\n", "    /\\ up /\\ cur.p = \"durable\" /\\ cur.x.k # \"excl\"\n"),
 
-    # Derived child grinds (DerivedChildGrinds.tla): earlier lattice-node bugs.
-    ("no-arrival-trigger", "Converges", "DerivedChildGrinds_Main.cfg", "DerivedChildGrinds.tla",
-     "ArrivalJobs(arr) == ArrivalKeys(arr)", "ArrivalJobs(arr) == {}"),
-    ("dedup-in-flight-derivation", "Converges", "DerivedChildGrinds_Main.cfg", "DerivedChildGrinds.tla",
+    # Derived child grinds (DerivedChildGrinds.tla): lattice-node bugs, earlier
+    # and possible. A trailing True marks a witness config: the correct model
+    # violates the property there, so the mutant is killed when it holds.
+    ("no-arrival-trigger", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     "ArrivalJobs(st, arr) == ArrivalKeys(st, arr)", "ArrivalJobs(st, arr) == {}"),
+    ("dedup-in-flight-derivation", "Converges", "DerivedChildGrinds_Grow.cfg", DCG,
      "Issued(js, S) == S",
      r"Issued(js, S) == {k \in S : ~\E j \in JobKeys : j[1] = k[1] /\ js[j] > 0}"),
-    ("apply-only-while-counted", "Converges", "DerivedChildGrinds_Main.cfg", "DerivedChildGrinds.tla",
+    ("apply-only-while-counted", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
      "Applies(dv, c) == TRUE", "Applies(dv, c) == dv[c] > 0"),
+    ("evict-ignores-deriving", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r"Holds(dv, pq, y) == dv[y] > 0 \/ pq[y] # {}", r"Holds(dv, pq, y) == pq[y] # {}"),
+    ("holds-ignores-peer-proofs", "PeerConverges", "DerivedChildGrinds_PeerPush.cfg", DCG,
+     r"Holds(dv, pq, y) == dv[y] > 0 \/ pq[y] # {}", r"Holds(dv, pq, y) == dv[y] > 0"),
+    ("no-boot-pass", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r'BootKeys(st) == ArrivalKeys(st, {c \in Children : st[c] = "tree"})', "BootKeys(st) == {}"),
+    ("rehost-no-boot", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     "LET S == Issued(jobs, BootKeys(status))", "LET S == {}"),
+    ("underflow", "TypeOK", "DerivedChildGrinds_Main.cfg", DCG,
+     "dv1 == [deriving EXCEPT ![c] = IF @ > 0 THEN @ - 1 ELSE 0]", "dv1 == [deriving EXCEPT ![c] = @ - 1]"),
+    ("no-proofless", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r'/\ p # "none" \/ Wanted(c)', r'/\ p # "none"'),
+    ("no-target-check", "Safety", "DerivedChildGrinds_Main.cfg", DCG,
+     r"Proofs(b) == {g \in Meets : CarrierOf[g] = b}", r"Proofs(b) == {g \in Grinds : CarrierOf[g] = b}"),
+    ("author-stops-on-first-credit", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r"/\ (AuthorStopsOnCredit => c \notin seen)", r"/\ c \notin seen"),
+    ("no-retrigger-on-grown-grinds", "Converges", "DerivedChildGrinds_Grow.cfg", DCG,
+     "          /\\ Retrigger(b, cg)\n    /\\ UNCHANGED <<weighed,",
+     "          /\\ UNCHANGED <<jobs, deriving>>\n    /\\ UNCHANGED <<weighed,"),
+    ("pending-not-lost-on-restart", "Converges", "DerivedChildGrinds_StopOnCredit.cfg", DCG,
+     "    /\\ restarts' = restarts + 1\n    /\\ Lose(Durable(status))",
+     "    /\\ restarts' = restarts + 1\n    /\\ Lose(Durable(status) \\cup {c \\in Children : status[c] = \"pending\"})", True),
 ]
 
 
-def run(name, expect, cfg, file, old, new):
+def run(name, expect, cfg, file, old, new, witness=False):
     with tempfile.TemporaryDirectory() as work:
         work = pathlib.Path(work)
         for f in (ROOT / "specs").iterdir():
@@ -195,6 +220,10 @@ def run(name, expect, cfg, file, old, new):
                              capture_output=True, text=True).stdout
         if "Parsing or semantic analysis failed" in out:
             return f"MUTANT {name}: does not parse", False
+        if witness:
+            if "No error has been found" in out:
+                return f"MUTANT {name}: killed ({expect} now holds on witness {cfg})", True
+            return f"MUTANT {name}: SURVIVED (witness {cfg} still violates {expect})", False
         # A liveness violation names no property; the property is checked
         # alone, so it is the one violated.
         if re.search(rf"(Invariant|Temporal property|Action property) {expect} .*violated"

@@ -1078,54 +1078,92 @@ revision is the API's change counter.
   batches, two crashes.
 ## Derived child grinds (`specs/DerivedChildGrinds.tla`)
 
-One node crediting a hosted child chain's blocks with the grinds of the
-parent blocks (carriers) that commit them, push only: the node never fetches a
-child block. Its bytes are in the node's store (it is the author) or arrive by
-gossip, with or without a peer proof. Three carriers commit two child blocks
-(`B1`, `B2` commit `C1`; `B3` commits `C2`); `B1` has one grind that meets the
-target and one that misses.
+One node crediting a hosted child level's blocks with the grinds of the
+parent-level blocks (carriers) that commit them, push only: the node never
+fetches a child block. A block enters only by gossip, with or without a peer
+proof, or by its author's local submit, which is gossip from no peer. Three
+carriers commit two child blocks (`B1`, `B2` commit `C1`; `B3` commits `C2`);
+`B1` has one grind that meets the target and one that misses. `C1`'s parent
+is the child genesis (in the tree); `C2`'s parent is `C1`.
 
-A carrier weighed issues a derivation of it at the block it commits, carrying
-the block's bytes if known, else as a read of the local store. A block that
-arrives (by gossip or by that read) issues a derivation of every weighed
-carrier committing it. Derivations answer in any order; answers are always
-applied, credit is idempotent, nothing deduplicates. A per-block count of
-derivations guards an awaiting block (capacity 1) from eviction. Peers send
-real or bogus proofs and may be purged; the node restarts (losing jobs, counts,
-awaiting blocks and peer proofs) and the chain is unhosted and re-hosted
-(losing the same but the jobs, which answer into the new level), at most once
-each. The boot pass takes every held block as arrived.
+A block is unknown, awaiting (in memory, capacity `Cap`), pending (in memory:
+credited, waiting for its parent to be in the tree; the pending budget may
+evict one) or in the tree (durable, with its credits). Its first credit
+promotes it from awaiting to pending, and it is weighed once its parent is.
+
+A carrier weighed, or credited another grind, derives the block it commits if
+that block is known; an unknown block issues nothing (no store read). A block
+that arrives derives every weighed carrier committing it, and the boot pass
+(restart, re-host) takes every tree block as arrived. A derivation covers the
+carrier's grinds not yet credited at issue; derivations answer in any order,
+are always applied while the level is hosted, and nothing deduplicates. An
+awaiting block with a derivation counted or a peer proof queued is held: never
+evicted; an arrival with every awaiting block held is refused. A peer proof
+is judged on its own, whether or not this node weighed its carrier.
+
+With `Grow` the parent level is itself a child level `X`: a carrier is weighed
+with some of its grinds and credited more later, and unhosting `X` unhosts
+this level too. Peers send real or failing proofs and may be purged (each
+failing proof and each purge spends one of `MaxStrikes`); the node restarts
+(losing jobs, counts, awaiting and pending blocks with their credits, and peer
+proofs) and levels are unhosted and re-hosted (losing the same but the jobs),
+each a bounded number of times. The author submits or gossips its block until
+it is in the tree.
 
 | Property | Kind |
 |---|---|
-| `Safety`: every credited grind belongs to a weighed carrier committing the block and meets its target | invariant |
-| `QuiescentFull`: no derivation in flight, a block held and its author done ⇒ fully credited | invariant |
-| `Converges`: with every derivation answering and the author re-gossiping until credited (weak fairness), every block ends fully credited | liveness |
+| `Safety`: every credited grind is one some verified root carries for the block and meets its target, whether or not the carrier is weighed | invariant |
+| `DerivedSafety`: every derived credit is a grind of a weighed carrier committing the block that meets its target | invariant |
+| `CreditHeld`: credit sits exactly on pending and tree blocks; pending only while the parent is not in the tree | invariant |
+| `QuiescentFull`: no derivation in flight ⇒ every pending or tree block holds all it is owed | invariant |
+| `Converges`: with every derivation answering, every queued proof checked and the author pushing until weighed (weak fairness), every owed grind ends credited and every block whose ancestors are owed work ends in the tree | liveness |
+| `PeerConverges`: with honest peers re-sending real proofs, every block ends in the tree | liveness |
 
 | Config | Scenario |
 |---|---|
-| `DerivedChildGrinds_Main.cfg` | both blocks authored elsewhere and pushed by gossip |
-| `DerivedChildGrinds_AuthorHeld.cfg` | the node authored `C1`, which is held (a boot-pass block) from the start |
+| `DerivedChildGrinds_Main.cfg` | root carriers; one restart, unhost, pending eviction and strike |
+| `DerivedChildGrinds_AuthorPush.cfg` | as `Main` with two restarts and two unhosts: an author's block missed while the level is down converges by the author's push |
+| `DerivedChildGrinds_Grow.cfg` | carriers in a child level `X` whose grinds grow; `X` (with this level) or this level unhosted |
+| `DerivedChildGrinds_PeerPush.cfg` | honest peers push both blocks with real proofs |
 
 Witnesses, each of which must fail: `DerivedChildGrinds_Credit.cfg` reaches a
-credit (`NoCredit`), and `DerivedChildGrinds_AuthorStored.cfg` (finding below)
+credit (`NoCredit`), and `DerivedChildGrinds_StopOnCredit.cfg` (finding below)
 violates `Converges`.
+
+A grandchild level's carrier is an `X` block whose credited grinds grow. The
+model takes `X` as an environment that only ever adds carriers and grinds,
+at any time while `X` is hosted; that covers every behaviour of a real `X`
+level, whose own convergence is this model one level up.
 
 ### Planted bugs
 
 | Mutant | Must be caught by |
 |---|---|
 | no derivation on arrival | `Converges` |
-| a derivation is skipped while one of the same carrier is in flight | `Converges` |
+| a derivation is skipped while one of the same carrier is in flight | `Converges` (`Grow`) |
 | an answer is applied only while its block's count is above zero | `Converges` |
+| eviction ignores derivations in flight | `Converges` |
+| eviction ignores queued peer proofs | `PeerConverges` |
+| no boot pass on restart | `Converges` |
+| no boot pass on re-host | `Converges` |
+| a derivation count can go negative | `TypeOK` |
+| an unknown block without a proof is never taken | `Converges` |
+| a grind that misses the target is credited | `Safety` |
+| the author stops at the first credit | `Converges` |
+| a carrier's new grind does not re-trigger | `Converges` (`Grow`) |
+| pending blocks survive a restart | `StopOnCredit` passes |
 
-### Finding: an authored block that is only stored
+Skipping a derivation while one of the same carrier is in flight is harmless
+with root carriers: both carry the same grinds. Only a grind credited between
+them (`Grow`) is lost.
 
-If the node's own block is in its store but not held, `Converges` fails and
-`QuiescentFull` passes vacuously: the block is never held. The carrier is
-weighed while the chain is unhosted (or its store read is lost to a restart);
-on re-host the boot pass takes only held blocks, and no author re-gossips the
-block to its own node, so nothing reads it again.
+### Finding: an author that stops at the first credit
+
+The first credit makes a block pending, in memory only. If the author stops
+there and the node restarts before the block's parent is in the tree, the
+block is gone and nothing brings it back: `C2` is credited by a peer proof
+while `C1` is unknown, the node restarts, and `C2` never returns although
+`C1` is later weighed. Authors must push until the block is weighed.
 
 ## ASERT difficulty (`lean/LatticeProofs/Asert.lean`)
 

@@ -8,7 +8,8 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
            MCHierarchy3_Main.cfg MCHierarchyFork_Main.cfg \
            MCSwapReorg_Main.cfg MCSwapReorg_Replay.cfg \
            MCRecovery_Main.cfg MCRecovery_Node.cfg \
-           DerivedChildGrinds_Main.cfg DerivedChildGrinds_AuthorHeld.cfg; do
+           DerivedChildGrinds_Main.cfg DerivedChildGrinds_AuthorPush.cfg DerivedChildGrinds_Grow.cfg \
+           DerivedChildGrinds_PeerPush.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
@@ -34,7 +35,7 @@ for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBacke
   fi
 done
 # Liveness findings: each must FAIL (TLC names no property; the cfg checks one).
-for cfg in DerivedChildGrinds_AuthorStored.cfg; do
+for cfg in DerivedChildGrinds_StopOnCredit.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "Temporal properties were violated" <<<"$out"; then
     echo "WITNESS $cfg: reached (liveness violated, as required)"

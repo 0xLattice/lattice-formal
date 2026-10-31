@@ -1,164 +1,248 @@
 ------------------------ MODULE DerivedChildGrinds -------------------------
 (***************************************************************************)
-(* One node deriving a hosted child chain's credited grinds from the      *)
-(* parent blocks (carriers) it weighs, push only: the node never fetches  *)
-(* a child block.  The child block's bytes are in the node's store from   *)
-(* the start (Authored: the node is its author) or arrive by gossip, with *)
-(* or without a peer proof.                                                *)
+(* One node crediting a hosted child level Y with the grinds of the       *)
+(* parent-level blocks (carriers) that commit Y's blocks, push only: the  *)
+(* node never fetches a child block.  A child block enters the node only  *)
+(* by gossip (with or without a peer proof) or by its author's local      *)
+(* submit, which is gossip from no peer.                                   *)
 (*                                                                         *)
 (*   carrier  commits  grinds (meets the committed block's target?)        *)
 (*   B1       C1       g1 (yes), g2 (no)                                   *)
 (*   B2       C1       g3 (yes)                                            *)
 (*   B3       C2       g4 (yes)                                            *)
 (*                                                                         *)
-(* A child block is unknown, awaiting (in memory, waiting for a proof;     *)
-(* at most Cap at once) or held (durable).  The first credit a block       *)
-(* takes makes it held.                                                    *)
+(* C1's parent is Y's genesis (in the tree); C2's parent is C1.            *)
 (*                                                                         *)
-(* Triggers, each inside the step that causes it (the step's `arrived`     *)
-(* set is a LET, never state):                                             *)
-(*  (a) carrier B weighed: derive(B, C), carrying C's bytes if C is known, *)
-(*      else as a read of the local store;                                 *)
-(*  (b) C arrives (unknown -> awaiting, by gossip or by a store read):     *)
-(*      derive(Bi, C) for every weighed carrier Bi committing C.           *)
-(* A derive job answers later, in any order, with the verified proofs of   *)
-(* its carrier's grinds that meet C's target, or nothing if it had no      *)
-(* bytes and the store has none.  Answers are always applied; jobs are     *)
-(* never deduplicated; `deriving` (jobs issued per child, in memory) only  *)
-(* guards an awaiting block from eviction.                                 *)
+(* A child block is unknown, awaiting (in memory, waiting for its first   *)
+(* proof; at most Cap at once), pending (in memory: credited, waiting for *)
+(* its parent to be in the tree; evictable by the pending budget) or in   *)
+(* the tree (durable, with its credits).                                   *)
 (*                                                                         *)
-(* Environment: peer gossip with real or bogus proofs, peer purge, at most *)
-(* MaxRestarts restarts and MaxUnhosts unhost/re-host cycles.  A restart   *)
-(* loses jobs, `deriving`, awaiting blocks and peer proofs; an unhost      *)
-(* loses the same except the jobs, which may answer into the re-hosted     *)
-(* level.  Weighed carriers and held blocks with their credits persist,    *)
-(* and the boot pass of a hosted level takes every held block as arrived.  *)
+(* Carriers' credited grind sets (cgr) only grow.  With Grow, the parent  *)
+(* level is itself a child level X: a carrier is weighed with some of its *)
+(* grinds and credited more later (each growth re-triggers derivation, as *)
+(* a parent block whose work changed does), and X can be unhosted, which  *)
+(* unhosts Y too.  Without Grow the parent is the root: a carrier is      *)
+(* weighed with all its grinds and never unhosted.                         *)
+(*                                                                         *)
+(* Triggers, each inside the step that causes it:                          *)
+(*  (a) carrier B weighed or credited a grind: derive(B, C) if C is known  *)
+(*      (awaiting, pending or in the tree); an unknown C issues nothing;  *)
+(*  (b) C arrives (unknown -> awaiting): derive(Bi, C) for every weighed  *)
+(*      carrier Bi committing C;                                           *)
+(*  (c) the boot pass of a hosted level (restart, re-host): every block   *)
+(*      in the tree arrives.                                               *)
+(* A derivation of (B, C) is issued only for the grinds of B not yet      *)
+(* credited at C (a snapshot) and answers later, in any order, with the   *)
+(* verified proofs of those grinds that meet C's target.  Answers are     *)
+(* always applied while Y is hosted; nothing deduplicates.  An awaiting   *)
+(* block with a derivation counted or a peer proof queued is held: never  *)
+(* evicted; an arrival with every awaiting block held is refused.          *)
+(*                                                                         *)
+(* Environment: peers gossip blocks with real or failing proofs; a        *)
+(* failing proof and a purge each spend one of MaxStrikes (a peer that    *)
+(* sends a failing proof is disconnected).  At most MaxRestarts restarts, *)
+(* MaxUnhosts unhost/re-host cycles (of Y, or with Grow of X and Y) and   *)
+(* MaxEvicts pending evictions.  A restart loses jobs, counts, awaiting   *)
+(* and pending blocks with their credits, and peer proofs; an unhost      *)
+(* loses the same but the jobs, which may answer into the re-hosted       *)
+(* level.  Carriers and tree blocks with their credits persist.            *)
 (***************************************************************************)
 EXTENDS Naturals, FiniteSets
 
 CONSTANTS
-    Authored,       \* child blocks in this node's store from the start
-    AuthorHolds,    \* whether those are held from the start, or only stored
-    Cap,            \* awaiting capacity
+    Cap,                \* awaiting capacity
+    Grow,               \* parent is a child level: grinds grow, X unhostable
+    PeerPush,           \* honest peers re-send each block with its real proof
+    AuthorStopsOnCredit,\* the author stops at the first credit, not weighing
     MaxRestarts,
-    MaxUnhosts
+    MaxUnhosts,
+    MaxEvicts,
+    MaxStrikes
 
 Carriers == {"B1", "B2", "B3"}
 Children == {"C1", "C2"}
+Parent == [c \in Children |-> IF c = "C2" THEN "C1" ELSE "genesis"]
 Commit == [b \in Carriers |-> IF b = "B3" THEN "C2" ELSE "C1"]
 Grinds == {"g1", "g2", "g3", "g4"}
 CarrierOf == [g \in Grinds |-> CASE g \in {"g1", "g2"} -> "B1"
                                  [] g = "g3" -> "B2"
                                  [] OTHER -> "B3"]
+GrindsOf(b) == {g \in Grinds : CarrierOf[g] = b}
 Meets == {"g1", "g3", "g4"}
-\* What a peer may attach: a real proof (g3), one for a grind that misses
-\* (g2), or garbage.
-PeerProofs == {"g2", "g3", "bogus"}
+\* What a peer may attach: a grind's proof (real only if it meets the
+\* target and its carrier commits the block) or garbage.
+PeerProofs == {"g2", "g3", "g4", "bogus"}
+Real == [c \in Children |-> IF c = "C1" THEN "g3" ELSE "g4"]
 
-\* A job: <<carrier, child, the child's bytes carried at issue>>.
-JobKeys == {<<b, Commit[b], k>> : b \in Carriers, k \in BOOLEAN}
+\* A job: <<carrier, child, grinds owed at issue>>.
+JobKeys == UNION {{<<b, Commit[b], G>> : G \in SUBSET GrindsOf(b) \ {{}}} : b \in Carriers}
 
-ASSUME Authored \subseteq Children /\ AuthorHolds \in BOOLEAN /\ Cap \in Nat \ {0}
+ASSUME Cap \in Nat \ {0} /\ Grow \in BOOLEAN /\ PeerPush \in BOOLEAN
+       /\ AuthorStopsOnCredit \in BOOLEAN
 
 VARIABLES
-    weighed,    \* carriers weighed (persisted)
-    status,     \* child -> "unknown" | "awaiting" | "held" (held persisted)
-    credited,   \* child -> grinds credited (persisted with held)
+    weighed,    \* carriers in the parent level's tree (persisted)
+    cgr,        \* carrier -> its credited grinds (persisted, grows)
+    status,     \* child -> "unknown" | "awaiting" | "pending" | "tree"
+    credited,   \* child -> grinds credited (persisted only in the tree)
+    dcred,      \* child -> grinds credited by a derivation (lost with credit)
+    seen,       \* children ever credited here (what an author may watch)
     jobs,       \* JobKeys -> number in flight
-    deriving,   \* child -> jobs issued since the last restart or unhost
+    deriving,   \* child -> jobs counted since the last restart or unhost
     peerQ,      \* child -> peer proofs queued or in a check
-    hosted,
-    restarts,
-    unhosts
+    hosted,     \* Y
+    xHosted,    \* X (always TRUE without Grow)
+    restarts, unhosts, evicts, strikes
 
-vars == <<weighed, status, credited, jobs, deriving, peerQ, hosted, restarts, unhosts>>
+vars == <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ,
+          hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
-Full(c) == {g \in Meets : CarrierOf[g] \in weighed /\ Commit[CarrierOf[g]] = c}
+InTree(c) == status[c] = "tree"
+Known(st, c) == st[c] # "unknown"
+\* Grinds of weighed carriers committing c that meet c's target.
+Full(c) == {g \in Meets : CarrierOf[g] \in weighed /\ g \in cgr[CarrierOf[g]] /\ Commit[CarrierOf[g]] = c}
+\* Grinds any verified root carries for c: what a proof can show.
+Verifiable(c) == {g \in Meets : Commit[CarrierOf[g]] = c}
+Valid(c, p) == p \in Meets /\ Commit[CarrierOf[p]] = c
 Proofs(b) == {g \in Meets : CarrierOf[g] = b}
-StoreHas(c) == c \in Authored \/ status[c] = "held"
-Awaiting(st) == {c \in Children : st[c] = "awaiting"}
 Committers(c) == {b \in weighed : Commit[b] = c}
+Awaiting(st) == {c \in Children : st[c] = "awaiting"}
+\* A block a waiting or pending child names as parent is wanted too.
+Wanted(c) == Committers(c) # {} \/ \E x \in Children : Parent[x] = c /\ status[x] \in {"awaiting", "pending"}
 
 NoJobs == [k \in JobKeys |-> 0]
 NoDeriving == [c \in Children |-> 0]
 NoPeer == [c \in Children |-> {}]
-Forget(st) == [c \in Children |-> IF st[c] = "held" THEN "held" ELSE "unknown"]
 
-\* Jobs for the committers of every block in arr.
-ArrivalKeys(arr) == {<<b, Commit[b], TRUE>> : b \in {x \in weighed : Commit[x] \in arr}}
+\* Derivations for carriers in B whose block is known in st, of the grinds
+\* not yet credited; a fully credited pair issues nothing.
+DeriveKeys(st, B, cg) ==
+    {<<b, Commit[b], cg[b] \ credited[Commit[b]]>> :
+        b \in {x \in B : Known(st, Commit[x]) /\ cg[x] \ credited[Commit[x]] # {}}}
 \* Trigger (b).
-ArrivalJobs(arr) == ArrivalKeys(arr)
+ArrivalKeys(st, arr) == DeriveKeys(st, {b \in weighed : Commit[b] \in arr}, cgr)
+ArrivalJobs(st, arr) == ArrivalKeys(st, arr)
 \* What issuing S puts in flight (nothing dedups).
 Issued(js, S) == S
 AddJobs(js, S) == [k \in JobKeys |-> IF k \in S THEN js[k] + 1 ELSE js[k]]
 AddDeriving(dv, S) == [c \in Children |-> dv[c] + Cardinality({k \in S : k[2] = c})]
 
+\* A pending block whose parent is in the tree is weighed (twice: C1 then C2).
+Settle1(st) == [c \in Children |-> IF st[c] = "pending" /\ (Parent[c] = "genesis" \/ st[Parent[c]] = "tree")
+                                    THEN "tree" ELSE st[c]]
+Settle(st) == Settle1(Settle1(st))
+
+Holds(dv, pq, y) == dv[y] > 0 \/ pq[y] # {}
+
 \* The status functions after c enters awaiting, evicting an awaiting
-\* block with no derivation counted if full; {} when there is no room.
-Admit(st, dv, c) ==
+\* block that is not held if full; {} (refused) when every one is held.
+Admit(st, dv, pq, c) ==
     IF Cardinality(Awaiting(st)) < Cap THEN {[st EXCEPT ![c] = "awaiting"]}
     ELSE {[x \in Children |-> IF x = c THEN "awaiting" ELSE IF x = v THEN "unknown" ELSE st[x]] :
-            v \in {y \in Awaiting(st) : dv[y] = 0}}
+            v \in {y \in Awaiting(st) : ~Holds(dv, pq, y)}}
 
-\* Credit P at c (known in st); the first credit makes c held.
-Credit(st, c, P) ==
+\* Credit P at c (known in st), D of it derived; the first credit of an
+\* awaiting block promotes it to pending, weighed once its parent is.
+Credit(st, c, P, D) ==
     /\ credited' = [credited EXCEPT ![c] = @ \cup P]
-    /\ status' = IF P # {} THEN [st EXCEPT ![c] = "held"] ELSE st
+    /\ dcred' = [dcred EXCEPT ![c] = @ \cup D]
+    /\ seen' = IF P # {} THEN seen \cup {c} ELSE seen
+    /\ status' = IF P # {} /\ st[c] = "awaiting" THEN Settle([st EXCEPT ![c] = "pending"]) ELSE st
+
+\* What survives: blocks in kept keep their status and credits.
+Durable(st) == {c \in Children : st[c] = "tree"}
+Lose(kept) ==
+    /\ status' = [c \in Children |-> IF c \in kept THEN status[c] ELSE "unknown"]
+    /\ credited' = [c \in Children |-> IF c \in kept THEN credited[c] ELSE {}]
+    /\ dcred' = [c \in Children |-> IF c \in kept THEN dcred[c] ELSE {}]
 
 Init ==
     /\ weighed = {}
-    /\ status = [c \in Children |-> IF AuthorHolds /\ c \in Authored THEN "held" ELSE "unknown"]
+    /\ cgr = [b \in Carriers |-> {}]
+    /\ status = [c \in Children |-> "unknown"]
     /\ credited = [c \in Children |-> {}]
+    /\ dcred = [c \in Children |-> {}]
+    /\ seen = {}
     /\ jobs = NoJobs
     /\ deriving = NoDeriving
     /\ peerQ = NoPeer
     /\ hosted = TRUE
-    /\ restarts = 0
-    /\ unhosts = 0
+    /\ xHosted = TRUE
+    /\ restarts = 0 /\ unhosts = 0 /\ evicts = 0 /\ strikes = 0
 
-\* Trigger (a).
+\* Trigger (a): carrier b's grinds are now cg.
+Retrigger(b, cg) ==
+    IF hosted
+      THEN LET S == Issued(jobs, DeriveKeys(status, {b}, cg))
+           IN /\ jobs' = AddJobs(jobs, S)
+              /\ deriving' = AddDeriving(deriving, S)
+      ELSE UNCHANGED <<jobs, deriving>>
+
+\* A carrier is weighed with its first credited grinds (at the root: all).
 Weigh(b) ==
-    /\ b \notin weighed
-    /\ weighed' = weighed \cup {b}
-    /\ IF hosted
-         THEN LET S == Issued(jobs, {<<b, Commit[b], status[Commit[b]] # "unknown">>})
-              IN /\ jobs' = AddJobs(jobs, S)
-                 /\ deriving' = AddDeriving(deriving, S)
-         ELSE UNCHANGED <<jobs, deriving>>
-    /\ UNCHANGED <<status, credited, peerQ, hosted, restarts, unhosts>>
+    /\ xHosted /\ b \notin weighed
+    /\ \E G \in IF Grow THEN SUBSET GrindsOf(b) \ {{}} ELSE {GrindsOf(b)} :
+         LET cg == [cgr EXCEPT ![b] = G]
+         IN /\ weighed' = weighed \cup {b}
+            /\ cgr' = cg
+            /\ Retrigger(b, cg)
+    /\ UNCHANGED <<status, credited, dcred, seen, peerQ, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
-\* A peer sends c, with proof p or none ("none").  Re-sending a known block
-\* only queues its proof.  An unknown block without a proof is taken only
-\* if a weighed carrier commits it.
+\* A weighed X block is credited another grind: its work changed, so it
+\* re-triggers like a weigh.
+GrowGrind(b, g) ==
+    /\ Grow /\ xHosted /\ b \in weighed /\ g \in GrindsOf(b) \ cgr[b]
+    /\ LET cg == [cgr EXCEPT ![b] = @ \cup {g}]
+       IN /\ cgr' = cg
+          /\ Retrigger(b, cg)
+    /\ UNCHANGED <<weighed, status, credited, dcred, seen, peerQ, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+
+\* c is sent with proof p or none ("none").  A known block only queues a
+\* new proof.  An unknown block without a proof is taken only if wanted.
+\* A failing proof costs the adversary a strike.
 Gossip(c, p) ==
     /\ hosted
-    /\ peerQ' = IF p = "none" THEN peerQ ELSE [peerQ EXCEPT ![c] = @ \cup {p}]
-    /\ IF status[c] # "unknown"
-         THEN UNCHANGED <<status, jobs, deriving>>
-         ELSE /\ p # "none" \/ Committers(c) # {}
-              /\ \E st \in Admit(status, deriving, c) :
-                    LET S == Issued(jobs, ArrivalJobs({c}))
+    /\ LET bad == p # "none" /\ ~Valid(c, p)
+       IN /\ bad => strikes < MaxStrikes
+          /\ strikes' = IF bad THEN strikes + 1 ELSE strikes
+    /\ IF Known(status, c)
+         THEN /\ p # "none" /\ p \notin peerQ[c] /\ p \notin credited[c]
+              /\ peerQ' = [peerQ EXCEPT ![c] = @ \cup {p}]
+              /\ UNCHANGED <<status, jobs, deriving>>
+         ELSE /\ p # "none" \/ Wanted(c)
+              /\ \E st \in Admit(status, deriving, peerQ, c) :
+                    LET S == Issued(jobs, ArrivalJobs(st, {c}))
                     IN /\ status' = st
                        /\ jobs' = AddJobs(jobs, S)
                        /\ deriving' = AddDeriving(deriving, S)
-    /\ UNCHANGED <<weighed, credited, hosted, restarts, unhosts>>
+              /\ peerQ' = IF p = "none" THEN peerQ ELSE [peerQ EXCEPT ![c] = @ \cup {p}]
+    /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, hosted, xHosted, restarts, unhosts, evicts>>
 
-\* The author republishes c, without a proof, until it is credited here.
-AuthorGossip(c) == credited[c] = {} /\ Gossip(c, "none")
+\* The author submits c to its own node or gossips it, until it is weighed.
+AuthorPush(c) ==
+    /\ ~InTree(c)
+    /\ (AuthorStopsOnCredit => c \notin seen)
+    /\ Gossip(c, "none")
 
+\* An honest peer re-sends c with its real proof until it is weighed.
+PeerSend(c) == PeerPush /\ ~InTree(c) /\ Gossip(c, Real[c])
+
+\* A peer's proof is judged on its own: it verifies against its root,
+\* whether or not this node weighed the carrier.
 CheckPeerProof(c, p) ==
     /\ p \in peerQ[c]
     /\ peerQ' = [peerQ EXCEPT ![c] = @ \ {p}]
-    /\ IF p \in Meets /\ CarrierOf[p] \in weighed /\ Commit[CarrierOf[p]] = c
-          /\ status[c] # "unknown"
-         THEN Credit(status, c, {p})
-         ELSE UNCHANGED <<status, credited>>
-    /\ UNCHANGED <<weighed, jobs, deriving, hosted, restarts, unhosts>>
+    /\ IF Valid(c, p) /\ Known(status, c)
+         THEN Credit(status, c, {p}, {})
+         ELSE UNCHANGED <<status, credited, dcred, seen>>
+    /\ UNCHANGED <<weighed, cgr, jobs, deriving, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
 Purge ==
-    /\ peerQ # NoPeer
+    /\ peerQ # NoPeer /\ strikes < MaxStrikes
+    /\ strikes' = strikes + 1
     /\ peerQ' = NoPeer
-    /\ UNCHANGED <<weighed, status, credited, jobs, deriving, hosted, restarts, unhosts>>
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, hosted, xHosted, restarts, unhosts, evicts>>
 
 \* Whether an answer is applied, given the count before it is taken off.
 Applies(dv, c) == TRUE
@@ -166,76 +250,91 @@ Applies(dv, c) == TRUE
 Answer(k) ==
     LET b == k[1]
         c == k[2]
-        carried == k[3]
+        P == k[3] \cap Proofs(b)
         js1 == [jobs EXCEPT ![k] = @ - 1]
         dv1 == [deriving EXCEPT ![c] = IF @ > 0 THEN @ - 1 ELSE 0]
     IN
     /\ jobs[k] > 0
+    /\ jobs' = js1
     /\ IF ~hosted \/ ~Applies(deriving, c)
-         THEN /\ jobs' = js1
-              /\ deriving' = IF hosted THEN dv1 ELSE deriving
-              /\ UNCHANGED <<status, credited>>
-       ELSE IF ~carried /\ status[c] = "unknown" /\ StoreHas(c)
-         \* The store read brings c in: an arrival.
-         THEN IF Admit(status, dv1, c) = {}
-                THEN /\ jobs' = js1 /\ deriving' = dv1
-                     /\ UNCHANGED <<status, credited>>
-                ELSE \E st \in Admit(status, dv1, c) :
-                       LET S == Issued(js1, ArrivalJobs({c}))
-                       IN /\ jobs' = AddJobs(js1, S)
-                          /\ deriving' = AddDeriving(dv1, S)
-                          /\ Credit(st, c, Proofs(b))
-       ELSE /\ jobs' = js1
-            /\ deriving' = dv1
-            /\ IF (carried \/ StoreHas(c)) /\ status[c] # "unknown"
-                 THEN Credit(status, c, Proofs(b))
-                 ELSE UNCHANGED <<status, credited>>
-    /\ UNCHANGED <<weighed, peerQ, hosted, restarts, unhosts>>
+         THEN /\ deriving' = IF hosted THEN dv1 ELSE deriving
+              /\ UNCHANGED <<status, credited, dcred, seen>>
+         ELSE /\ deriving' = dv1
+              /\ IF Known(status, c)
+                   THEN Credit(status, c, P, P)
+                   ELSE UNCHANGED <<status, credited, dcred, seen>>
+    /\ UNCHANGED <<weighed, cgr, peerQ, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
-\* The boot pass: every held block arrives.
-BootKeys(st) == ArrivalKeys({c \in Children : st[c] = "held"})
+\* The pending budget evicts a pending leaf (the code: the largest hash).
+EvictPending ==
+    /\ evicts < MaxEvicts
+    /\ \E v \in {c \in Children : status[c] = "pending"} :
+         /\ ~\E x \in Children : Parent[x] = v /\ status[x] = "pending"
+         /\ status' = [status EXCEPT ![v] = "unknown"]
+         /\ credited' = [credited EXCEPT ![v] = {}]
+         /\ dcred' = [dcred EXCEPT ![v] = {}]
+    /\ evicts' = evicts + 1
+    /\ UNCHANGED <<weighed, cgr, seen, jobs, deriving, peerQ, hosted, xHosted, restarts, unhosts, strikes>>
+
+\* The boot pass: every block in the tree arrives.
+BootKeys(st) == ArrivalKeys(st, {c \in Children : st[c] = "tree"})
 
 Restart ==
     /\ restarts < MaxRestarts
     /\ restarts' = restarts + 1
-    /\ status' = Forget(status)
+    /\ Lose(Durable(status))
     /\ peerQ' = NoPeer
-    /\ LET S == IF hosted THEN Issued(NoJobs, BootKeys(Forget(status))) ELSE {}
+    /\ LET S == IF hosted THEN Issued(NoJobs, BootKeys(status)) ELSE {}
        IN /\ jobs' = AddJobs(NoJobs, S)
           /\ deriving' = AddDeriving(NoDeriving, S)
-    /\ UNCHANGED <<weighed, credited, hosted, unhosts>>
+    /\ UNCHANGED <<weighed, cgr, seen, hosted, xHosted, unhosts, evicts, strikes>>
 
-Unhost ==
-    /\ hosted /\ unhosts < MaxUnhosts
-    /\ hosted' = FALSE
+\* Unhost Y, or (x, with Grow) X with its descendant Y.
+Unhost(x) ==
+    /\ unhosts < MaxUnhosts
+    /\ IF x THEN Grow /\ xHosted ELSE hosted
     /\ unhosts' = unhosts + 1
-    /\ status' = Forget(status)
-    /\ deriving' = NoDeriving
-    /\ peerQ' = NoPeer
-    /\ UNCHANGED <<weighed, credited, jobs, restarts>>
+    /\ xHosted' = IF x THEN FALSE ELSE xHosted
+    /\ hosted' = FALSE
+    /\ IF hosted
+         THEN /\ Lose(Durable(status))
+              /\ deriving' = NoDeriving
+              /\ peerQ' = NoPeer
+         ELSE UNCHANGED <<status, credited, dcred, deriving, peerQ>>
+    /\ UNCHANGED <<weighed, cgr, seen, jobs, restarts, evicts, strikes>>
+
+RehostX ==
+    /\ ~xHosted
+    /\ xHosted' = TRUE
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ, hosted, restarts, unhosts, evicts, strikes>>
 
 Rehost ==
-    /\ ~hosted
+    /\ ~hosted /\ xHosted
     /\ hosted' = TRUE
     /\ LET S == Issued(jobs, BootKeys(status))
        IN /\ jobs' = AddJobs(jobs, S)
           /\ deriving' = AddDeriving(NoDeriving, S)
-    /\ UNCHANGED <<weighed, status, credited, peerQ, restarts, unhosts>>
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, peerQ, xHosted, restarts, unhosts, evicts, strikes>>
 
 Next ==
     \/ \E b \in Carriers : Weigh(b)
+    \/ \E b \in Carriers, g \in Grinds : GrowGrind(b, g)
     \/ \E c \in Children, p \in PeerProofs \cup {"none"} : Gossip(c, p)
+    \/ \E c \in Children : AuthorPush(c)
     \/ \E c \in Children, p \in PeerProofs : CheckPeerProof(c, p)
     \/ Purge
     \/ \E k \in JobKeys : Answer(k)
-    \/ Restart \/ Unhost \/ Rehost
+    \/ EvictPending
+    \/ Restart \/ Unhost(TRUE) \/ Unhost(FALSE) \/ RehostX \/ Rehost
 
-\* Every job eventually answers; the author eventually re-gossips a block
-\* it has not seen credited; an unhosted chain is eventually re-hosted.
+\* Every job answers and every queued proof is checked; the author pushes
+\* each block until it is weighed (and honest peers too, with PeerPush);
+\* an unhosted level is eventually hosted again.
 Fairness ==
     /\ \A k \in JobKeys : WF_vars(Answer(k))
-    /\ \A c \in Children \ Authored : WF_vars(AuthorGossip(c))
-    /\ WF_vars(Rehost)
+    /\ \A c \in Children, p \in PeerProofs : WF_vars(CheckPeerProof(c, p))
+    /\ \A c \in Children : WF_vars(AuthorPush(c)) /\ WF_vars(PeerSend(c))
+    /\ WF_vars(RehostX) /\ WF_vars(Rehost)
 
 Spec == Init /\ [][Next]_vars /\ Fairness
 
@@ -243,30 +342,45 @@ Spec == Init /\ [][Next]_vars /\ Fairness
 
 TypeOK ==
     /\ weighed \subseteq Carriers
-    /\ status \in [Children -> {"unknown", "awaiting", "held"}]
+    /\ cgr \in [Carriers -> SUBSET Grinds]
+    /\ status \in [Children -> {"unknown", "awaiting", "pending", "tree"}]
     /\ credited \in [Children -> SUBSET Grinds]
+    /\ dcred \in [Children -> SUBSET Grinds]
     /\ jobs \in [JobKeys -> Nat]
     /\ deriving \in [Children -> Nat]
     /\ peerQ \in [Children -> SUBSET PeerProofs]
     /\ Cardinality(Awaiting(status)) <= Cap
 
-\* Nothing unverified is credited.
-Safety == \A c \in Children : credited[c] \subseteq Full(c)
+\* Every credit is a grind some verified root carries for the block and
+\* meets its target, whether or not this node weighed its carrier.
+Safety == \A c \in Children : credited[c] \subseteq Verifiable(c)
 
-\* Credit is only ever held at a held block.
-CreditHeld == \A c \in Children : credited[c] # {} => status[c] = "held"
+\* Every derived credit is a grind of a weighed carrier committing the
+\* block that meets its target.
+DerivedSafety == \A c \in Children : dcred[c] \subseteq credited[c] /\ dcred[c] \subseteq Full(c)
 
-\* The author is done with c once it is credited here (or it is this node).
-AuthorDone(c) == c \in Authored \/ credited[c] # {}
+\* Credit sits exactly on pending and tree blocks; a block is in the tree
+\* only above its parent, and pending only while its parent is not.
+CreditHeld ==
+    \A c \in Children :
+        /\ (credited[c] # {}) = (status[c] \in {"pending", "tree"})
+        /\ status[c] = "pending" => Parent[c] # "genesis" /\ status[Parent[c]] # "tree"
+        /\ status[c] = "tree" => Parent[c] = "genesis" \/ status[Parent[c]] = "tree"
 
-\* With nothing in flight, a held block whose author is done is fully credited.
+\* With nothing in flight, every credited block holds all it is owed.
 QuiescentFull ==
     (hosted /\ jobs = NoJobs) =>
-        \A c \in Children : status[c] = "held" /\ AuthorDone(c) => credited[c] = Full(c)
+        \A c \in Children : status[c] \in {"pending", "tree"} => Full(c) \subseteq credited[c]
 
-\* Results are invariant to arrival order and restart: in the end every
-\* grind of a weighed carrier that meets its block's target is credited.
-Converges == <>[](\A c \in Children : credited[c] = Full(c))
+\* A block whose every ancestor up to genesis is owed work can be weighed.
+Reach(c) == Full(c) # {} /\ (Parent[c] = "genesis" \/ Full(Parent[c]) # {})
+
+\* In the end every grind of a weighed carrier that meets its block's
+\* target is credited, and every block that can be weighed is.
+Converges == <>[](\A c \in Children : Full(c) \subseteq credited[c] /\ (Reach(c) => InTree(c)))
+
+\* With honest peers pushing real proofs, every block ends in the tree.
+PeerConverges == <>[](\A c \in Children : InTree(c))
 
 \* Witness, must FAIL: some credit is reachable.
 NoCredit == \A c \in Children : credited[c] = {}
