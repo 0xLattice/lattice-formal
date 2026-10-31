@@ -9,7 +9,8 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
            MCSwapReorg_Main.cfg MCSwapReorg_Replay.cfg \
            MCRecovery_Main.cfg MCRecovery_Node.cfg \
            DerivedChildGrinds_Main.cfg DerivedChildGrinds_Defer.cfg DerivedChildGrinds_Parent.cfg \
-           DerivedChildGrinds_AuthorPush.cfg DerivedChildGrinds_Grow.cfg DerivedChildGrinds_PeerPush.cfg; do
+           DerivedChildGrinds_AuthorPush.cfg DerivedChildGrinds_Grow.cfg DerivedChildGrinds_PeerPush.cfg \
+           DerivedChildGrinds_Index.cfg DerivedChildGrinds_ParentIndex.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
@@ -45,5 +46,5 @@ for cfg in DerivedChildGrinds_StopOnCredit.cfg; do
 done
 python3 "$root/scripts/mutants.py" || failures=$((failures + 1))
 # Trace validation: lattice-node's derived-child-grind traces refine the model.
-python3 "$root/scripts/derived_trace_check.py" "$root"/traces/derived-* | tail -1 || failures=$((failures + 1))
+python3 "$root/scripts/derived_trace_check.py" "$root"/traces/derived-d0021e0 | tail -1 || failures=$((failures + 1))
 exit $((failures > 0))

@@ -14,6 +14,7 @@
   },
   "events" : [
     {
+      "accepted" : false,
       "after" : {
         "credited" : {
           "C1" : [
@@ -41,135 +42,87 @@
         },
         "status" : {
           "C1" : "unknown",
-          "C2" : "unknown"
-        }
-      },
-      "carrier" : "B2",
-      "grinds" : [
-        "b2"
-      ],
-      "kind" : "weigh"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "deriving" : {
-          "C1" : 0,
-          "C2" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "status" : {
-          "C1" : "unknown",
-          "C2" : "unknown"
-        }
-      },
-      "carrier" : "B3",
-      "grinds" : [
-        "b3"
-      ],
-      "kind" : "weigh"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "deriving" : {
-          "C1" : 0,
-          "C2" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "status" : {
-          "C1" : "unknown",
-          "C2" : "unknown"
-        }
-      },
-      "kind" : "restart"
-    },
-    {
-      "accepted" : true,
-      "after" : {
-        "credited" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "deriving" : {
-          "C1" : 1,
-          "C2" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "B2",
-            "child" : "C1",
-            "count" : 1,
-            "grinds" : [
-              "b2"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "status" : {
-          "C1" : "awaiting",
           "C2" : "unknown"
         }
       },
       "child" : "C1",
       "from" : "self",
-      "issued" : [
-        {
-          "carrier" : "B2",
-          "child" : "C1",
-          "grinds" : [
-            "b2"
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+          "C1" : [
+
+          ],
+          "C2" : [
+
           ]
+        },
+        "deriving" : {
+          "C1" : 0,
+          "C2" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C1" : [
+
+          ],
+          "C2" : [
+
+          ]
+        },
+        "status" : {
+          "C1" : "unknown",
+          "C2" : "unknown"
         }
-      ],
+      },
+      "child" : "C2",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+          "C1" : [
+
+          ],
+          "C2" : [
+
+          ]
+        },
+        "deriving" : {
+          "C1" : 0,
+          "C2" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C1" : [
+
+          ],
+          "C2" : [
+
+          ]
+        },
+        "status" : {
+          "C1" : "unknown",
+          "C2" : "unknown"
+        }
+      },
+      "child" : "C2",
+      "from" : "alpha-1",
       "kind" : "gossip",
       "proof" : "none",
       "victim" : "none"
@@ -184,14 +137,7 @@
         },
         "hosted" : false,
         "jobs" : [
-          {
-            "carrier" : "B2",
-            "child" : "C1",
-            "count" : 1,
-            "grinds" : [
-              "b2"
-            ]
-          }
+
         ],
         "peerQ" : {
 
@@ -204,6 +150,7 @@
       "x" : false
     },
     {
+      "accepted" : false,
       "after" : {
         "credited" : {
 
@@ -213,14 +160,7 @@
         },
         "hosted" : false,
         "jobs" : [
-          {
-            "carrier" : "B2",
-            "child" : "C1",
-            "count" : 1,
-            "grinds" : [
-              "b2"
-            ]
-          }
+
         ],
         "peerQ" : {
 
@@ -229,9 +169,34 @@
 
         }
       },
-      "carrier" : "W",
+      "child" : "C2",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+
+        },
+        "deriving" : {
+
+        },
+        "hosted" : false,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+
+        },
+        "status" : {
+
+        }
+      },
+      "carrier" : "B2",
       "grinds" : [
-        "w"
+        "b2"
       ],
       "kind" : "weigh"
     },
@@ -254,12 +219,37 @@
 
         }
       },
-      "carrier" : "B2",
-      "child" : "C1",
+      "carrier" : "B3",
       "grinds" : [
-        "b2"
+        "b3"
       ],
-      "kind" : "answer"
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+
+        },
+        "deriving" : {
+
+        },
+        "hosted" : false,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+
+        },
+        "status" : {
+
+        }
+      },
+      "child" : "C2",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
     },
     {
       "accepted" : false,
@@ -288,6 +278,7 @@
       "victim" : "none"
     },
     {
+      "accepted" : false,
       "after" : {
         "credited" : {
 
@@ -306,7 +297,63 @@
 
         }
       },
-      "kind" : "restart"
+      "child" : "C1",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+
+        },
+        "deriving" : {
+
+        },
+        "hosted" : false,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+
+        },
+        "status" : {
+
+        }
+      },
+      "child" : "C2",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+
+        },
+        "deriving" : {
+
+        },
+        "hosted" : false,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+
+        },
+        "status" : {
+
+        }
+      },
+      "child" : "C2",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
     },
     {
       "after" : {
@@ -327,7 +374,37 @@
 
         }
       },
-      "kind" : "restart"
+      "carrier" : "W",
+      "grinds" : [
+        "w"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+
+        },
+        "deriving" : {
+
+        },
+        "hosted" : false,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+
+        },
+        "status" : {
+
+        }
+      },
+      "child" : "C2",
+      "from" : "self",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
     },
     {
       "after" : {
@@ -413,124 +490,17 @@
       "from" : "self",
       "issued" : [
         {
-          "carrier" : "W",
-          "child" : "C1",
-          "grinds" : [
-            "w"
-          ]
-        },
-        {
           "carrier" : "B2",
           "child" : "C1",
           "grinds" : [
             "b2"
           ]
-        }
-      ],
-      "kind" : "gossip",
-      "proof" : "none",
-      "victim" : "none"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
         },
-        "deriving" : {
-          "C1" : 1,
-          "C2" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "B2",
-            "child" : "C1",
-            "count" : 1,
-            "grinds" : [
-              "b2"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "status" : {
-          "C1" : "awaiting",
-          "C2" : "unknown"
-        }
-      },
-      "carrier" : "W",
-      "child" : "C1",
-      "grinds" : [
-        "w"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "accepted" : true,
-      "after" : {
-        "credited" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "deriving" : {
-          "C1" : 1,
-          "C2" : 1
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "B2",
-            "child" : "C1",
-            "count" : 1,
-            "grinds" : [
-              "b2"
-            ]
-          },
-          {
-            "carrier" : "B3",
-            "child" : "C2",
-            "count" : 1,
-            "grinds" : [
-              "b3"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "status" : {
-          "C1" : "awaiting",
-          "C2" : "awaiting"
-        }
-      },
-      "child" : "C2",
-      "from" : "alpha-3",
-      "issued" : [
         {
-          "carrier" : "B3",
-          "child" : "C2",
+          "carrier" : "W",
+          "child" : "C1",
           "grinds" : [
-            "b3"
+            "w"
           ]
         }
       ],
@@ -546,179 +516,6 @@
           ],
           "C2" : [
 
-          ]
-        },
-        "deriving" : {
-          "C1" : 0,
-          "C2" : 1
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "B3",
-            "child" : "C2",
-            "count" : 1,
-            "grinds" : [
-              "b3"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-
-          ]
-        },
-        "status" : {
-          "C1" : "tree",
-          "C2" : "awaiting"
-        }
-      },
-      "carrier" : "B2",
-      "child" : "C1",
-      "grinds" : [
-        "b2"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "accepted" : true,
-      "after" : {
-        "credited" : {
-          "C1" : [
-            "b2"
-          ],
-          "C2" : [
-
-          ]
-        },
-        "deriving" : {
-          "C1" : 0,
-          "C2" : 1
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "B3",
-            "child" : "C2",
-            "count" : 1,
-            "grinds" : [
-              "b3"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-            "bogus"
-          ]
-        },
-        "status" : {
-          "C1" : "tree",
-          "C2" : "awaiting"
-        }
-      },
-      "child" : "C2",
-      "from" : "alpha-3",
-      "kind" : "gossip",
-      "proof" : "bogus",
-      "victim" : "none"
-    },
-    {
-      "accepted" : false,
-      "after" : {
-        "credited" : {
-          "C1" : [
-            "b2"
-          ],
-          "C2" : [
-
-          ]
-        },
-        "deriving" : {
-          "C1" : 0,
-          "C2" : 1
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "B3",
-            "child" : "C2",
-            "count" : 1,
-            "grinds" : [
-              "b3"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-            "bogus"
-          ]
-        },
-        "status" : {
-          "C1" : "tree",
-          "C2" : "awaiting"
-        }
-      },
-      "child" : "C2",
-      "from" : "self",
-      "kind" : "gossip",
-      "proof" : "none",
-      "victim" : "none"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C1" : [
-            "b2"
-          ],
-          "C2" : [
-            "b3"
-          ]
-        },
-        "deriving" : {
-          "C1" : 0,
-          "C2" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-
-        ],
-        "peerQ" : {
-          "C1" : [
-
-          ],
-          "C2" : [
-            "bogus"
-          ]
-        },
-        "status" : {
-          "C1" : "tree",
-          "C2" : "tree"
-        }
-      },
-      "carrier" : "B3",
-      "child" : "C2",
-      "grinds" : [
-        "b3"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C1" : [
-            "b2"
-          ],
-          "C2" : [
-            "b3"
           ]
         },
         "deriving" : {
@@ -746,19 +543,107 @@
         },
         "status" : {
           "C1" : "tree",
-          "C2" : "tree"
+          "C2" : "unknown"
         }
       },
+      "carrier" : "B2",
+      "child" : "C1",
+      "grinds" : [
+        "b2"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C1" : [
+            "b2"
+          ],
+          "C2" : [
+
+          ]
+        },
+        "deriving" : {
+          "C1" : 0,
+          "C2" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C1" : [
+
+          ],
+          "C2" : [
+
+          ]
+        },
+        "status" : {
+          "C1" : "tree",
+          "C2" : "unknown"
+        }
+      },
+      "carrier" : "W",
+      "child" : "C1",
+      "grinds" : [
+        "w"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "C1" : [
+            "b2"
+          ],
+          "C2" : [
+
+          ]
+        },
+        "deriving" : {
+          "C1" : 0,
+          "C2" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "B3",
+            "child" : "C2",
+            "count" : 1,
+            "grinds" : [
+              "b3"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C1" : [
+
+          ],
+          "C2" : [
+
+          ]
+        },
+        "status" : {
+          "C1" : "tree",
+          "C2" : "awaiting"
+        }
+      },
+      "child" : "C2",
+      "from" : "self",
       "issued" : [
         {
-          "carrier" : "W",
-          "child" : "C1",
+          "carrier" : "B3",
+          "child" : "C2",
           "grinds" : [
-            "w"
+            "b3"
           ]
         }
       ],
-      "kind" : "restart"
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
     },
     {
       "after" : {
@@ -791,10 +676,10 @@
           "C2" : "tree"
         }
       },
-      "carrier" : "W",
-      "child" : "C1",
+      "carrier" : "B3",
+      "child" : "C2",
       "grinds" : [
-        "w"
+        "b3"
       ],
       "kind" : "answer"
     }
@@ -838,7 +723,7 @@
     "b2",
     "b3"
   ],
-  "name" : "random-48",
+  "name" : "random-28",
   "real" : {
     "C1" : "b2",
     "C2" : "b3"

@@ -1088,13 +1088,28 @@ one that misses. `C1`'s parent is the child genesis (in the tree); `C2`'s
 parent is `C1`.
 
 A block is unknown, awaiting (in memory, capacity `Cap`), pending (in memory:
-credited, waiting for its parent to be in the tree; the pending budget may
-evict one) or in the tree (durable, with its credits). Its first credit
-promotes it from awaiting to pending, and it is weighed once its parent is.
-With `DeferSettle` a credited block may stay pending after its parent is in
-the tree (`C1` pending above the genesis, as a pending header waits for its
-child index or its timestamp) until a separate, weakly fair settle step
-weighs it.
+credited, waiting for its parent to be in the tree or for its children index;
+the pending budget may evict one) or in the tree (durable, with its credits).
+Its first credit promotes it from awaiting to pending, and the same step
+weighs it if its parent is weighed and its index held: the step weighs what
+it can before the budget evicts. With `DeferSettle` a credited block may stay
+pending after its parent is in the tree (`C1` pending above the genesis, as a
+pending header waits for its timestamp) until a separate, weakly fair settle
+step weighs it.
+
+With `IndexFetched` a block may arrive without its children index, which is
+then asked of an announcer. A nil answer keeps the header and its credits:
+it is asked of the next announcer or, with none left, waits until a tick
+re-asks its stream hole (weakly fair). Nobody is blamed. An index asked
+again and again is eventually served (strong fairness: the block's author
+holds it and pushes the block until it is weighed).
+
+Queued peer proofs never exceed the operator's total budget `QBudget`. A
+proof over it is dropped without blame; its hole stays lacking and a tick
+re-asks it (weakly fair). An honest peer logs a block once, so while its
+relay's hole is lacking it waits to be asked again. There is no per-peer or
+per-source share: bounds come from PoW, verification with disconnect, and
+the operator's totals.
 
 A carrier weighed, or credited another grind, derives the block it commits if
 that block is known; an unknown block issues nothing (no store read). A block
@@ -1129,28 +1144,29 @@ lets every promotion ask, as if each block had a live source.
 
 - **(A1)** no operator finality window, or only blocks within it: a block
   past finality is declined and is not weighed here.
-- **(A2)** the author submits its block with inline children, so a pending
-  block never waits on a child-index fetch.
-- **(A3)** pending-budget pressure eventually leaves room: pending evictions
-  are bounded (`MaxEvicts`). This is a known limit of the existing node
-  sync: the budget evicts the largest-hash pending leaf and orphans never
-  expire, so unbounded pressure can evict the same block forever. The
-  `unbounded-evict` mutant removes the bound and breaks `Converges`.
+- **(A3)** pending-budget pressure on blocks the node cannot weigh yet
+  eventually leaves room: evictions of orphans (parent not in the tree) and
+  of blocks waiting on their children index or timestamp are bounded
+  (`MaxEvicts`). The budget evicts the largest-hash pending leaf and orphans
+  never expire, so unbounded pressure can evict such a block forever. The
+  `unbounded-evict` mutant removes the bound and breaks `Converges`. Any
+  other pending block may be evicted without bound in the model: that none
+  ever is pending when the budget runs (a block promoted above a weighed
+  parent is weighed in its step first) is checked by `CreditHeld` and
+  `Converges`, and the `promote-evicts-early` mutant breaks it.
 - **(A4)** failing proofs and purges (`MaxStrikes`), restarts
   (`MaxRestarts`) and unhosts (`MaxUnhosts`) are bounded.
 
-Two existing sync limits are outside the model and slated for a follow-up
-node PR: a failed children-index fetch drops pending entries, which (A2) is
-what excludes, and the per-peer awaiting cap refuses a peer's headers past
-it.
+(A2), that a pending block never waits on a children-index fetch, is gone:
+`IndexFetched` models the fetch and its nil answers.
 
 | Property | Kind |
 |---|---|
 | `Safety`: every credited grind is one some verified root carries for the block and meets its target, whether or not the carrier is weighed | invariant |
 | `DerivedSafety`: every derived credit is a grind of a weighed carrier committing the block that meets its target | invariant |
-| `CreditHeld`: credit sits exactly on pending and tree blocks; pending only while the parent is not in the tree | invariant |
+| `CreditHeld`: credit sits exactly on pending and tree blocks; with its index held, pending only while the parent is not in the tree (nothing weighable is left for the budget) | invariant |
 | `QuiescentFull`: no derivation in flight ⇒ every pending or tree block holds all it is owed | invariant |
-| `Converges`: with every derivation answering, every queued proof checked and the author pushing until weighed (weak fairness), every owed grind ends credited and every block whose ancestors are owed work ends in the tree | liveness |
+| `Converges`: with every derivation answering, every queued proof checked, every lacking hole re-asked and the author pushing until weighed (weak fairness), and an index asked again and again served (strong fairness), every owed grind ends credited and every block whose ancestors are owed work ends in the tree | liveness |
 | `PeerConverges`: with honest peers re-sending real proofs, every block ends in the tree | liveness |
 
 | Config | Scenario |
@@ -1158,9 +1174,11 @@ it.
 | `DerivedChildGrinds_Main.cfg` | root carriers; one restart, unhost, pending eviction and strike |
 | `DerivedChildGrinds_AuthorPush.cfg` | as `Main` with two restarts and two unhosts: an author's block missed while the level is down converges by the author's push |
 | `DerivedChildGrinds_Grow.cfg` | carriers in a child level `X` whose grinds grow; `X` (with this level) or this level unhosted |
-| `DerivedChildGrinds_PeerPush.cfg` | honest peers push both blocks with real proofs |
+| `DerivedChildGrinds_PeerPush.cfg` | honest peers push both blocks with real proofs; a proof budget of one, so a peer's proof can be dropped and re-asked |
 | `DerivedChildGrinds_Defer.cfg` | as `Main` with `DeferSettle`: a credited block stays pending above a tree parent until a fair settle step |
 | `DerivedChildGrinds_Parent.cfg` | `ParentsFetched`: only `C2` is pushed, `C1` arrives only as a one-shot ancestor answer; with `DeferSettle`; one restart, unhost, eviction and strike |
+| `DerivedChildGrinds_Index.cfg` | as `Main` with `IndexFetched`: a block may arrive without its children index, and nil answers keep it waiting |
+| `DerivedChildGrinds_ParentIndex.cfg` | `ParentsFetched` with `IndexFetched`: the one-shot ancestor answer may come without its index |
 
 Witnesses, each of which must fail: `DerivedChildGrinds_Credit.cfg` reaches a
 credit (`NoCredit`), and `DerivedChildGrinds_StopOnCredit.cfg` (finding below)
@@ -1197,6 +1215,10 @@ level, whose own convergence is this model one level up.
 | a pending block is weighed whatever its parent | `CreditHeld` |
 | a peer proof is credited without its check | `Safety` (`PeerPush`) |
 | an arrival never evicts a waiting block | `Converges` |
+| a promoted block can be evicted before its step weighs it | `Converges` |
+| a nil children-index answer drops the pending header and its credits | `Converges` (`ParentIndex`) |
+| a proof dropped over the budget disconnects its sender | `PeerConverges` (`PeerPush`) |
+| a proof dropped over the budget is never re-asked | `PeerConverges` (`PeerPush`) |
 
 Two changes are equivalent optimisations, not bugs, and are left out:
 deriving a carrier's every grind rather than those not yet credited (the
@@ -1241,17 +1263,23 @@ peer is disconnected; a pending eviction beside a promotion): it becomes those
 events, and only the last carries the state. Issuing a derivation is part of
 the action that triggers it, as in the spec. The code settles a credited
 block in the step that credits it, so the replay runs with `DeferSettle` and
-`ParentsFetched` off (ancestor answers are not traced). Two scenario tests reach into the
+`ParentsFetched` off (ancestor answers are not traced), and with
+`IndexFetched` off and the proof budget out of reach: the traced tests send
+children inline and queue far less than the default budget. PR #40's tests
+of nil index answers and of the budget are untraced. Two scenario tests reach into the
 core outside any step (clearing derivation counts, filling the awaiting set):
 those are `tamper` events, whose logged state the replay adopts.
 
 ```sh
-scripts/derived_trace_check.py traces/derived-429b4bf
-scripts/derived_trace_check.py --selftest traces/derived-429b4bf/trace-random-9.json
+scripts/derived_trace_check.py traces/derived-d0021e0
+scripts/derived_trace_check.py --selftest traces/derived-d0021e0/trace-random-1.json
 ```
 
-`traces/derived-429b4bf/` holds 82 traces (lattice-node PR #39 at `429b4bf`):
-32 from the scenario tests and 50 random. All conform. The self-test
+`traces/derived-d0021e0/` holds 83 traces (lattice-node main at `d0021e0`,
+with PR #40): 33 from the scenario tests and 50 random. All conform. No
+pending eviction occurs in them any more: at `429b4bf` three random traces
+evicted pending `C2` in the step that promoted its parent `C1`, which PR #40
+now weighs, with `C2`, before the budget runs. The self-test
 corrupts a credit, a status, a count and the jobs in flight, reports a taken
 gossip as refused and answers a derivation before it was issued, and
 requires each to be caught. Planted bugs in the model fail the traces: an
