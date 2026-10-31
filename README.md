@@ -1160,7 +1160,7 @@ it.
 | `DerivedChildGrinds_Grow.cfg` | carriers in a child level `X` whose grinds grow; `X` (with this level) or this level unhosted |
 | `DerivedChildGrinds_PeerPush.cfg` | honest peers push both blocks with real proofs |
 | `DerivedChildGrinds_Defer.cfg` | as `Main` with `DeferSettle`: a credited block stays pending above a tree parent until a fair settle step |
-| `DerivedChildGrinds_Parent.cfg` | `ParentsFetched`: only `C2` is pushed, `C1` arrives only as a one-shot ancestor answer; one restart, unhost, eviction and strike |
+| `DerivedChildGrinds_Parent.cfg` | `ParentsFetched`: only `C2` is pushed, `C1` arrives only as a one-shot ancestor answer; with `DeferSettle`; one restart, unhost, eviction and strike |
 
 Witnesses, each of which must fail: `DerivedChildGrinds_Credit.cfg` reaches a
 credit (`NoCredit`), and `DerivedChildGrinds_StopOnCredit.cfg` (finding below)
@@ -1255,10 +1255,10 @@ scripts/derived_trace_check.py --selftest traces/derived-429b4bf/trace-random-9.
 corrupts a credit, a status, a count and the jobs in flight, reports a taken
 gossip as refused and answers a derivation before it was issued, and
 requires each to be caught. Planted bugs in the model fail the traces: an
-answer applied only while its count is above zero fails 1 of 81 (the
-outlived-derivation test), eviction ignoring derivations in flight fails 2,
-no derivation on arrival fails 72, and deriving a fully credited pair fails
-35.
+answer applied only while its count is above zero fails 1 of 82 (the
+outlived-derivation test), eviction ignoring derivations in flight fails 3,
+no derivation on arrival fails 74, and deriving a fully credited pair fails
+29.
 
 ### Finding: an author that stops at the first credit
 
