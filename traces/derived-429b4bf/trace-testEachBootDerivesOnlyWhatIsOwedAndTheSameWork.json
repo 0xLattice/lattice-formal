@@ -1,0 +1,377 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "B" : "C",
+    "W" : "C"
+  },
+  "children" : {
+    "C" : "genesis"
+  },
+  "events" : [
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "unknown"
+        }
+      },
+      "carrier" : "B",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "unknown"
+        }
+      },
+      "carrier" : "W",
+      "grinds" : [
+        "w"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 2
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "B",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "b"
+            ]
+          },
+          {
+            "carrier" : "W",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "w"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "awaiting"
+        }
+      },
+      "child" : "C",
+      "from" : "self",
+      "issued" : [
+        {
+          "carrier" : "B",
+          "child" : "C",
+          "grinds" : [
+            "b"
+          ]
+        },
+        {
+          "carrier" : "W",
+          "child" : "C",
+          "grinds" : [
+            "w"
+          ]
+        }
+      ],
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "W",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "w"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "B",
+      "child" : "C",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "W",
+      "child" : "C",
+      "grinds" : [
+        "w"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "W",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "w"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "issued" : [
+        {
+          "carrier" : "W",
+          "child" : "C",
+          "grinds" : [
+            "w"
+          ]
+        }
+      ],
+      "kind" : "restart"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "W",
+      "child" : "C",
+      "grinds" : [
+        "w"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "W",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "w"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "issued" : [
+        {
+          "carrier" : "W",
+          "child" : "C",
+          "grinds" : [
+            "w"
+          ]
+        }
+      ],
+      "kind" : "restart"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "W",
+      "child" : "C",
+      "grinds" : [
+        "w"
+      ],
+      "kind" : "answer"
+    }
+  ],
+  "grinds" : {
+    "b" : "B",
+    "w" : "W"
+  },
+  "grow" : false,
+  "init" : {
+    "cgr" : {
+      "B" : [
+
+      ],
+      "W" : [
+
+      ]
+    },
+    "credited" : {
+      "C" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "C" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+    "b"
+  ],
+  "name" : "testEachBootDerivesOnlyWhatIsOwedAndTheSameWork",
+  "real" : {
+    "C" : "b"
+  }
+}

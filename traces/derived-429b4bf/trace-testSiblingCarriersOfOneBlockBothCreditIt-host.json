@@ -1,0 +1,231 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "B" : "C",
+    "S" : "C"
+  },
+  "children" : {
+    "C" : "genesis"
+  },
+  "events" : [
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "unknown"
+        }
+      },
+      "carrier" : "B",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "B",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "b"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "awaiting"
+        }
+      },
+      "child" : "C",
+      "from" : "self",
+      "issued" : [
+        {
+          "carrier" : "B",
+          "child" : "C",
+          "grinds" : [
+            "b"
+          ]
+        }
+      ],
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "B",
+      "child" : "C",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "C" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "S",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "s"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "S",
+      "grinds" : [
+        "s"
+      ],
+      "issued" : [
+        {
+          "carrier" : "S",
+          "child" : "C",
+          "grinds" : [
+            "s"
+          ]
+        }
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "b",
+            "s"
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree"
+        }
+      },
+      "carrier" : "S",
+      "child" : "C",
+      "grinds" : [
+        "s"
+      ],
+      "kind" : "answer"
+    }
+  ],
+  "grinds" : {
+    "b" : "B",
+    "s" : "S"
+  },
+  "grow" : false,
+  "init" : {
+    "cgr" : {
+      "B" : [
+
+      ],
+      "S" : [
+
+      ]
+    },
+    "credited" : {
+      "C" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "C" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+    "b",
+    "s"
+  ],
+  "name" : "testSiblingCarriersOfOneBlockBothCreditIt-host",
+  "real" : {
+    "C" : "b"
+  }
+}

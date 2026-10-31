@@ -1,0 +1,149 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "B" : "A"
+  },
+  "children" : {
+    "A" : "genesis"
+  },
+  "events" : [
+    {
+      "after" : {
+        "credited" : {
+          "A" : [
+
+          ]
+        },
+        "deriving" : {
+          "A" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "A" : [
+
+          ]
+        },
+        "status" : {
+          "A" : "unknown"
+        }
+      },
+      "carrier" : "B",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "A" : [
+
+          ]
+        },
+        "deriving" : {
+          "A" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "B",
+            "child" : "A",
+            "count" : 1,
+            "grinds" : [
+              "b"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "A" : [
+
+          ]
+        },
+        "status" : {
+          "A" : "awaiting"
+        }
+      },
+      "child" : "A",
+      "from" : "self",
+      "issued" : [
+        {
+          "carrier" : "B",
+          "child" : "A",
+          "grinds" : [
+            "b"
+          ]
+        }
+      ],
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "A" : [
+            "b"
+          ]
+        },
+        "deriving" : {
+          "A" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "A" : [
+
+          ]
+        },
+        "status" : {
+          "A" : "tree"
+        }
+      },
+      "carrier" : "B",
+      "child" : "A",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "answer"
+    }
+  ],
+  "grinds" : {
+    "b" : "B"
+  },
+  "grow" : false,
+  "init" : {
+    "cgr" : {
+      "B" : [
+
+      ]
+    },
+    "credited" : {
+      "A" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "A" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+    "b"
+  ],
+  "name" : "testADerivationThatMissesCreditsNothingAndIsBoundedByItsTriggers-alpha",
+  "real" : {
+    "A" : "b"
+  }
+}

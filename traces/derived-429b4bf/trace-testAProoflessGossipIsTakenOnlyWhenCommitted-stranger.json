@@ -1,0 +1,80 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "B" : "C",
+    "S" : "C"
+  },
+  "children" : {
+    "C" : "genesis"
+  },
+  "events" : [
+    {
+      "accepted" : false,
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "unknown"
+        }
+      },
+      "child" : "C",
+      "from" : "alpha-host",
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    }
+  ],
+  "grinds" : {
+    "b" : "B",
+    "s" : "S"
+  },
+  "grow" : false,
+  "init" : {
+    "cgr" : {
+      "B" : [
+
+      ],
+      "S" : [
+
+      ]
+    },
+    "credited" : {
+      "C" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "C" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+    "b",
+    "s"
+  ],
+  "name" : "testAProoflessGossipIsTakenOnlyWhenCommitted-stranger",
+  "real" : {
+    "C" : "b"
+  }
+}

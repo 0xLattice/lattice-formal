@@ -1,0 +1,149 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "B" : "C"
+  },
+  "children" : {
+    "C" : "genesis"
+  },
+  "events" : [
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "unknown"
+        }
+      },
+      "carrier" : "B",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "B",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "b"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "awaiting"
+        }
+      },
+      "child" : "C",
+      "from" : "self",
+      "issued" : [
+        {
+          "carrier" : "B",
+          "child" : "C",
+          "grinds" : [
+            "b"
+          ]
+        }
+      ],
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "awaiting"
+        }
+      },
+      "carrier" : "B",
+      "child" : "C",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "answer"
+    }
+  ],
+  "grinds" : {
+    "b" : "B"
+  },
+  "grow" : false,
+  "init" : {
+    "cgr" : {
+      "B" : [
+
+      ]
+    },
+    "credited" : {
+      "C" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "C" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+
+  ],
+  "name" : "testACarrierMissingTheChildTargetCreditsNothing",
+  "real" : {
+    "C" : "b"
+  }
+}
