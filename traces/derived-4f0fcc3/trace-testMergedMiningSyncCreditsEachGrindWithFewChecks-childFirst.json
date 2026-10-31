@@ -1,0 +1,276 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "N1" : "G",
+    "N2" : "C"
+  },
+  "children" : {
+    "C" : "G",
+    "G" : "genesis"
+  },
+  "events" : [
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "deriving" : {
+          "C" : 0,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "status" : {
+          "C" : "unknown",
+          "G" : "awaiting"
+        }
+      },
+      "child" : "G",
+      "from" : "alpha-host",
+      "kind" : "gossip",
+      "proof" : "n1",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 0,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "unknown",
+          "G" : "tree"
+        }
+      },
+      "child" : "G",
+      "kind" : "check",
+      "proof" : "n1"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "C" : [
+
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 0,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+            "n2"
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "awaiting",
+          "G" : "tree"
+        }
+      },
+      "child" : "C",
+      "from" : "alpha-host",
+      "kind" : "gossip",
+      "proof" : "n2",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "n2"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 0,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "child" : "C",
+      "kind" : "check",
+      "proof" : "n2"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "n2"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 0,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "N1",
+      "grinds" : [
+        "n1"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "n2"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 0,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "N2",
+      "grinds" : [
+        "n2"
+      ],
+      "kind" : "weigh"
+    }
+  ],
+  "grinds" : {
+    "n1" : "N1",
+    "n2" : "N2"
+  },
+  "grow" : false,
+  "init" : {
+    "cgr" : {
+      "N1" : [
+
+      ],
+      "N2" : [
+
+      ]
+    },
+    "credited" : {
+      "C" : [
+
+      ],
+      "G" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "C" : "unknown",
+      "G" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+    "n1",
+    "n2"
+  ],
+  "name" : "testMergedMiningSyncCreditsEachGrindWithFewChecks-childFirst",
+  "real" : {
+    "C" : "n2",
+    "G" : "n1"
+  }
+}

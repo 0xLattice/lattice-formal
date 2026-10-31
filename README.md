@@ -1157,6 +1157,53 @@ Skipping a derivation while one of the same carrier is in flight is harmless
 with root carriers: both carry the same grinds. Only a grind credited between
 them (`Grow`) is lost.
 
+### Trace validation (`specs/TraceDerivedChildGrinds.tla`)
+
+lattice-node's `DerivedChildGrindTests` records, through its host harness,
+one event per model action at one hosted level (a carrier weighed or
+credited a grind, a gossip or submit with or without a proof, a derivation
+answered, a peer proof checked, a purge, a pending eviction, a restart, an
+unhost or re-host) and, after each host step, every child's status, credits,
+derivation count and queued peer proofs and every derivation in flight.
+Every scenario test is traced, and `testRandomInterleavingsCreditEveryOwedGrind`
+traces 50 seeded interleavings (two children, C2 on C1, three root carriers
+one of whose grinds never credits; odd seeds await one header at a time,
+every third keeps room for one pending header). With `DERIVED_TRACE_DIR` set,
+each trace is written as `trace-<name>.json`.
+
+`scripts/derived_trace_check.py` replays each through `DerivedChildGrinds`
+with the trace's own fixture overriding the spec's (`Carriers`, `Children`,
+`Commit`, `Grinds`, `Meets`, ...) and the host's state when tracing began as
+the initial state:
+
+- each event must be the named action with the logged choices (a weigh's
+  grinds, an arrival's evicted block), and a gossip the code refused must be
+  one the spec cannot take (a mismatch deadlocks TLC);
+- after each host step, status, credits, counts, queued peer proofs and jobs
+  must equal the spec's.
+
+One host step can be several actions (a failed check, then a purge as its
+peer is disconnected; a pending eviction beside a promotion): it becomes those
+events, and only the last carries the state. Issuing a derivation is part of
+the action that triggers it, as in the spec. Two scenario tests reach into the
+core outside any step (clearing derivation counts, filling the awaiting set):
+those are `tamper` events, whose logged state the replay adopts.
+
+```sh
+scripts/derived_trace_check.py traces/derived-4f0fcc3
+scripts/derived_trace_check.py --selftest traces/derived-4f0fcc3/trace-random-9.json
+```
+
+`traces/derived-4f0fcc3/` holds 81 traces (lattice-node PR #39 at `4f0fcc3`):
+31 from the scenario tests and 50 random. All conform. The self-test
+corrupts a credit, a status, a count and the jobs in flight, reports a taken
+gossip as refused and answers a derivation before it was issued, and
+requires each to be caught. Planted bugs in the model fail the traces: an
+answer applied only while its count is above zero fails 1 of 81 (the
+outlived-derivation test), eviction ignoring derivations in flight fails 2,
+no derivation on arrival fails 72, and deriving a fully credited pair fails
+35.
+
 ### Finding: an author that stops at the first credit
 
 The first credit makes a block pending, in memory only. If the author stops

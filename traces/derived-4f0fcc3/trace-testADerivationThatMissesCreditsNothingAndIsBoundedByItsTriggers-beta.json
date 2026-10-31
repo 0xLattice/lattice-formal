@@ -1,0 +1,149 @@
+{
+  "anomalies" : [
+
+  ],
+  "cap" : 1024,
+  "carriers" : {
+    "A" : "D"
+  },
+  "children" : {
+    "D" : "genesis"
+  },
+  "events" : [
+    {
+      "after" : {
+        "credited" : {
+          "D" : [
+
+          ]
+        },
+        "deriving" : {
+          "D" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "D" : [
+
+          ]
+        },
+        "status" : {
+          "D" : "unknown"
+        }
+      },
+      "carrier" : "A",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "weigh"
+    },
+    {
+      "accepted" : true,
+      "after" : {
+        "credited" : {
+          "D" : [
+
+          ]
+        },
+        "deriving" : {
+          "D" : 1
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "A",
+            "child" : "D",
+            "count" : 1,
+            "grinds" : [
+              "b"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "D" : [
+
+          ]
+        },
+        "status" : {
+          "D" : "awaiting"
+        }
+      },
+      "child" : "D",
+      "from" : "self",
+      "issued" : [
+        {
+          "carrier" : "A",
+          "child" : "D",
+          "grinds" : [
+            "b"
+          ]
+        }
+      ],
+      "kind" : "gossip",
+      "proof" : "none",
+      "victim" : "none"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "D" : [
+
+          ]
+        },
+        "deriving" : {
+          "D" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+
+        ],
+        "peerQ" : {
+          "D" : [
+
+          ]
+        },
+        "status" : {
+          "D" : "awaiting"
+        }
+      },
+      "carrier" : "A",
+      "child" : "D",
+      "grinds" : [
+        "b"
+      ],
+      "kind" : "answer"
+    }
+  ],
+  "grinds" : {
+    "b" : "A"
+  },
+  "grow" : true,
+  "init" : {
+    "cgr" : {
+      "A" : [
+
+      ]
+    },
+    "credited" : {
+      "D" : [
+
+      ]
+    },
+    "hosted" : true,
+    "status" : {
+      "D" : "unknown"
+    },
+    "weighed" : [
+
+    ]
+  },
+  "meets" : [
+
+  ],
+  "name" : "testADerivationThatMissesCreditsNothingAndIsBoundedByItsTriggers-beta",
+  "real" : {
+    "D" : "b"
+  }
+}

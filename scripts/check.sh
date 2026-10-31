@@ -44,4 +44,6 @@ for cfg in DerivedChildGrinds_StopOnCredit.cfg; do
   fi
 done
 python3 "$root/scripts/mutants.py" || failures=$((failures + 1))
+# Trace validation: lattice-node's derived-child-grind traces refine the model.
+python3 "$root/scripts/derived_trace_check.py" "$root"/traces/derived-* | tail -1 || failures=$((failures + 1))
 exit $((failures > 0))
