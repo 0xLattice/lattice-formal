@@ -204,7 +204,7 @@ MUTANTS = [
      "Wanted(c) == Committers(c) # {}"),
     # Removes the MaxEvicts bound: documents assumption (A3).
     ("unbounded-evict", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
-     "    /\\ evicts' = evicts + 1\n", "    /\\ evicts' = evicts\n"),
+     "/\\ evicts' = IF Unweighable(v) THEN evicts + 1 ELSE evicts", "/\\ evicts' = evicts"),
     ("weigh-no-retrigger", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
      "            /\\ Retrigger(b, cg)\n    /\\ UNCHANGED <<status,",
      "            /\\ UNCHANGED <<jobs, deriving>>\n    /\\ UNCHANGED <<status,"),
@@ -216,6 +216,20 @@ MUTANTS = [
      r"IF Valid(c, p) /\ Known(status, c)", r"IF Known(status, c)"),
     ("admit-never-evicts", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
      r"    ELSE {[x \in Children |-> IF x = c", r"    ELSE {} \cap {[x \in Children |-> IF x = c"),
+    # lattice-node before PR #40: a promoted header was evicted before the
+    # step weighed it, a nil children index dropped the header, and the
+    # per-source caps it replaced with a total budget.
+    ("promote-evicts-early", "Converges", "DerivedChildGrinds_Main.cfg", DCG,
+     r'Promote(st, c) == IF DeferSettle THEN [st EXCEPT ![c] = "pending"] ELSE Settle([st EXCEPT ![c] = "pending"], idx)',
+     r'Promote(st, c) == [st EXCEPT ![c] = "pending"]'),
+    ("nil-index-drops-pending", "Converges", "DerivedChildGrinds_ParentIndex.cfg", DCG,
+     r"""NilKeeps(c) == idx' \in {[idx EXCEPT ![c] = "asked"], [idx EXCEPT ![c] = "waiting"]} /\ UNCHANGED <<status, credited, dcred>>""",
+     r"""NilKeeps(c) == idx' = [idx EXCEPT ![c] = "held"] /\ status' = [status EXCEPT ![c] = "unknown"]"""
+     r""" /\ credited' = [credited EXCEPT ![c] = {}] /\ dcred' = [dcred EXCEPT ![c] = {}]"""),
+    ("budget-drop-blames", "PeerConverges", "DerivedChildGrinds_PeerPush.cfg", DCG,
+     r"Drop(c, p) == lack' = lack \cup {<<c, p>>} /\ UNCHANGED honest", r"Drop(c, p) == lack' = {} /\ honest' = FALSE"),
+    ("budget-drop-no-reask", "PeerConverges", "DerivedChildGrinds_PeerPush.cfg", DCG,
+     "    /\\ hosted /\\ <<c, p>> \\in lack\n", "    /\\ FALSE /\\ hosted /\\ <<c, p>> \\in lack\n"),
 ]
 
 

@@ -55,7 +55,8 @@ Replay(e) ==
            /\ credited' = e.after.credited
            /\ dcred' = [c \in Children |-> dcred[c] \cap e.after.credited[c]]
            /\ deriving' = e.after.deriving
-           /\ UNCHANGED <<weighed, cgr, seen, jobs, peerQ, fetch, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+           /\ UNCHANGED <<weighed, cgr, seen, jobs, peerQ, fetch, idx, lack, honest, hosted, xHosted, restarts, unhosts,
+                          evicts, strikes>>
 
 TraceInit ==
     /\ weighed = TInit.weighed
@@ -68,6 +69,9 @@ TraceInit ==
     /\ deriving = NoDeriving
     /\ peerQ = NoPeer
     /\ fetch = {}
+    /\ idx = AllHeld
+    /\ lack = {}
+    /\ honest = TRUE
     /\ hosted = TInit.hosted
     /\ xHosted = TRUE
     /\ restarts = 0 /\ unhosts = 0 /\ evicts = 0 /\ strikes = 0

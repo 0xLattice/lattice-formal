@@ -26,7 +26,7 @@ from trace_check import ROOT, fn, tla
 
 INVARIANTS = ["HostedMatches", "StatusMatches", "CreditedMatches", "DerivingMatches",
               "PeerQMatches", "JobsMatch"]
-BOUND = 1000  # restarts, unhosts, evictions and strikes: never binding here
+BOUND = 1000  # restarts, unhosts, evictions, strikes and queued proofs: never binding here
 
 
 def tset(xs):
@@ -105,10 +105,12 @@ CONSTANTS
     AuthorStopsOnCredit = FALSE
     DeferSettle = FALSE
     ParentsFetched = FALSE
+    IndexFetched = FALSE
     MaxRestarts = {BOUND}
     MaxUnhosts = {BOUND}
     MaxEvicts = {BOUND}
     MaxStrikes = {BOUND}
+    QBudget = {BOUND}
     Carriers <- TCarriers
     Children <- TChildren
     Parent <- TParent

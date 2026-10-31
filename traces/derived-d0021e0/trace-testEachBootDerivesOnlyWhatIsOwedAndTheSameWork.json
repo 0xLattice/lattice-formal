@@ -112,17 +112,17 @@
       "from" : "self",
       "issued" : [
         {
-          "carrier" : "B",
-          "child" : "C",
-          "grinds" : [
-            "b"
-          ]
-        },
-        {
           "carrier" : "W",
           "child" : "C",
           "grinds" : [
             "w"
+          ]
+        },
+        {
+          "carrier" : "B",
+          "child" : "C",
+          "grinds" : [
+            "b"
           ]
         }
       ],
@@ -134,7 +134,7 @@
       "after" : {
         "credited" : {
           "C" : [
-            "b"
+
           ]
         },
         "deriving" : {
@@ -143,11 +143,11 @@
         "hosted" : true,
         "jobs" : [
           {
-            "carrier" : "W",
+            "carrier" : "B",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "w"
+              "b"
             ]
           }
         ],
@@ -157,13 +157,13 @@
           ]
         },
         "status" : {
-          "C" : "tree"
+          "C" : "awaiting"
         }
       },
-      "carrier" : "B",
+      "carrier" : "W",
       "child" : "C",
       "grinds" : [
-        "b"
+        "w"
       ],
       "kind" : "answer"
     },
@@ -190,10 +190,10 @@
           "C" : "tree"
         }
       },
-      "carrier" : "W",
+      "carrier" : "B",
       "child" : "C",
       "grinds" : [
-        "w"
+        "b"
       ],
       "kind" : "answer"
     },

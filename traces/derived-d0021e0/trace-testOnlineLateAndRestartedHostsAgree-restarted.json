@@ -598,59 +598,10 @@
       "from" : "self",
       "issued" : [
         {
-          "carrier" : "K6",
+          "carrier" : "K2",
           "child" : "C",
           "grinds" : [
-            "k6"
-          ]
-        },
-        {
-          "carrier" : "K5",
-          "child" : "C",
-          "grinds" : [
-            "k5"
-          ]
-        },
-        {
-          "carrier" : "K1",
-          "child" : "C",
-          "grinds" : [
-            "k1"
-          ]
-        },
-        {
-          "carrier" : "K8",
-          "child" : "C",
-          "grinds" : [
-            "k8"
-          ]
-        },
-        {
-          "carrier" : "K12",
-          "child" : "C",
-          "grinds" : [
-            "k12"
-          ]
-        },
-        {
-          "carrier" : "K10",
-          "child" : "C",
-          "grinds" : [
-            "k10"
-          ]
-        },
-        {
-          "carrier" : "K4",
-          "child" : "C",
-          "grinds" : [
-            "k4"
-          ]
-        },
-        {
-          "carrier" : "K11",
-          "child" : "C",
-          "grinds" : [
-            "k11"
+            "k2"
           ]
         },
         {
@@ -661,10 +612,10 @@
           ]
         },
         {
-          "carrier" : "K7",
+          "carrier" : "K1",
           "child" : "C",
           "grinds" : [
-            "k7"
+            "k1"
           ]
         },
         {
@@ -675,10 +626,59 @@
           ]
         },
         {
-          "carrier" : "K2",
+          "carrier" : "K10",
           "child" : "C",
           "grinds" : [
-            "k2"
+            "k10"
+          ]
+        },
+        {
+          "carrier" : "K12",
+          "child" : "C",
+          "grinds" : [
+            "k12"
+          ]
+        },
+        {
+          "carrier" : "K5",
+          "child" : "C",
+          "grinds" : [
+            "k5"
+          ]
+        },
+        {
+          "carrier" : "K7",
+          "child" : "C",
+          "grinds" : [
+            "k7"
+          ]
+        },
+        {
+          "carrier" : "K6",
+          "child" : "C",
+          "grinds" : [
+            "k6"
+          ]
+        },
+        {
+          "carrier" : "K11",
+          "child" : "C",
+          "grinds" : [
+            "k11"
+          ]
+        },
+        {
+          "carrier" : "K4",
+          "child" : "C",
+          "grinds" : [
+            "k4"
+          ]
+        },
+        {
+          "carrier" : "K8",
+          "child" : "C",
+          "grinds" : [
+            "k8"
           ]
         }
       ],
@@ -690,7 +690,7 @@
       "after" : {
         "credited" : {
           "C" : [
-            "k6"
+            "k1"
           ],
           "G" : [
             "n1"
@@ -702,14 +702,6 @@
         },
         "hosted" : true,
         "jobs" : [
-          {
-            "carrier" : "K1",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k1"
-            ]
-          },
           {
             "carrier" : "K10",
             "child" : "C",
@@ -767,232 +759,11 @@
             ]
           },
           {
-            "carrier" : "K7",
+            "carrier" : "K6",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k7"
-            ]
-          },
-          {
-            "carrier" : "K8",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k8"
-            ]
-          },
-          {
-            "carrier" : "K9",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k9"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C" : [
-
-          ],
-          "G" : [
-
-          ]
-        },
-        "status" : {
-          "C" : "tree",
-          "G" : "tree"
-        }
-      },
-      "carrier" : "K6",
-      "child" : "C",
-      "grinds" : [
-        "k6"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C" : [
-            "k5",
-            "k6"
-          ],
-          "G" : [
-            "n1"
-          ]
-        },
-        "deriving" : {
-          "C" : 10,
-          "G" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "K1",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k1"
-            ]
-          },
-          {
-            "carrier" : "K10",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k10"
-            ]
-          },
-          {
-            "carrier" : "K11",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k11"
-            ]
-          },
-          {
-            "carrier" : "K12",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k12"
-            ]
-          },
-          {
-            "carrier" : "K2",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k2"
-            ]
-          },
-          {
-            "carrier" : "K3",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k3"
-            ]
-          },
-          {
-            "carrier" : "K4",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k4"
-            ]
-          },
-          {
-            "carrier" : "K7",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k7"
-            ]
-          },
-          {
-            "carrier" : "K8",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k8"
-            ]
-          },
-          {
-            "carrier" : "K9",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k9"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C" : [
-
-          ],
-          "G" : [
-
-          ]
-        },
-        "status" : {
-          "C" : "tree",
-          "G" : "tree"
-        }
-      },
-      "carrier" : "K5",
-      "child" : "C",
-      "grinds" : [
-        "k5"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C" : [
-            "k1",
-            "k5",
-            "k6"
-          ],
-          "G" : [
-            "n1"
-          ]
-        },
-        "deriving" : {
-          "C" : 9,
-          "G" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "K10",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k10"
-            ]
-          },
-          {
-            "carrier" : "K11",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k11"
-            ]
-          },
-          {
-            "carrier" : "K12",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k12"
-            ]
-          },
-          {
-            "carrier" : "K2",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k2"
-            ]
-          },
-          {
-            "carrier" : "K3",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k3"
-            ]
-          },
-          {
-            "carrier" : "K4",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k4"
+              "k6"
             ]
           },
           {
@@ -1044,17 +815,14 @@
       "after" : {
         "credited" : {
           "C" : [
-            "k1",
-            "k5",
-            "k6",
-            "k8"
+            "k1"
           ],
           "G" : [
             "n1"
           ]
         },
         "deriving" : {
-          "C" : 8,
+          "C" : 11,
           "G" : 0
         },
         "hosted" : true,
@@ -1108,11 +876,35 @@
             ]
           },
           {
+            "carrier" : "K5",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k5"
+            ]
+          },
+          {
+            "carrier" : "K6",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k6"
+            ]
+          },
+          {
             "carrier" : "K7",
             "child" : "C",
             "count" : 1,
             "grinds" : [
               "k7"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
             ]
           },
           {
@@ -1137,29 +929,100 @@
           "G" : "tree"
         }
       },
-      "carrier" : "K8",
-      "child" : "C",
-      "grinds" : [
-        "k8"
+      "issued" : [
+        {
+          "carrier" : "K2",
+          "child" : "C",
+          "grinds" : [
+            "k2"
+          ]
+        },
+        {
+          "carrier" : "K9",
+          "child" : "C",
+          "grinds" : [
+            "k9"
+          ]
+        },
+        {
+          "carrier" : "K3",
+          "child" : "C",
+          "grinds" : [
+            "k3"
+          ]
+        },
+        {
+          "carrier" : "K10",
+          "child" : "C",
+          "grinds" : [
+            "k10"
+          ]
+        },
+        {
+          "carrier" : "K12",
+          "child" : "C",
+          "grinds" : [
+            "k12"
+          ]
+        },
+        {
+          "carrier" : "K5",
+          "child" : "C",
+          "grinds" : [
+            "k5"
+          ]
+        },
+        {
+          "carrier" : "K7",
+          "child" : "C",
+          "grinds" : [
+            "k7"
+          ]
+        },
+        {
+          "carrier" : "K6",
+          "child" : "C",
+          "grinds" : [
+            "k6"
+          ]
+        },
+        {
+          "carrier" : "K11",
+          "child" : "C",
+          "grinds" : [
+            "k11"
+          ]
+        },
+        {
+          "carrier" : "K4",
+          "child" : "C",
+          "grinds" : [
+            "k4"
+          ]
+        },
+        {
+          "carrier" : "K8",
+          "child" : "C",
+          "grinds" : [
+            "k8"
+          ]
+        }
       ],
-      "kind" : "answer"
+      "kind" : "restart"
     },
     {
       "after" : {
         "credited" : {
           "C" : [
             "k1",
-            "k12",
-            "k5",
-            "k6",
-            "k8"
+            "k2"
           ],
           "G" : [
             "n1"
           ]
         },
         "deriving" : {
-          "C" : 7,
+          "C" : 10,
           "G" : 0
         },
         "hosted" : true,
@@ -1181,11 +1044,11 @@
             ]
           },
           {
-            "carrier" : "K2",
+            "carrier" : "K12",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k2"
+              "k12"
             ]
           },
           {
@@ -1205,11 +1068,35 @@
             ]
           },
           {
+            "carrier" : "K5",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k5"
+            ]
+          },
+          {
+            "carrier" : "K6",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k6"
+            ]
+          },
+          {
             "carrier" : "K7",
             "child" : "C",
             "count" : 1,
             "grinds" : [
               "k7"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
             ]
           },
           {
@@ -1234,10 +1121,10 @@
           "G" : "tree"
         }
       },
-      "carrier" : "K12",
+      "carrier" : "K2",
       "child" : "C",
       "grinds" : [
-        "k12"
+        "k2"
       ],
       "kind" : "answer"
     },
@@ -1246,22 +1133,27 @@
         "credited" : {
           "C" : [
             "k1",
-            "k10",
-            "k12",
-            "k5",
-            "k6",
-            "k8"
+            "k2",
+            "k9"
           ],
           "G" : [
             "n1"
           ]
         },
         "deriving" : {
-          "C" : 6,
+          "C" : 9,
           "G" : 0
         },
         "hosted" : true,
         "jobs" : [
+          {
+            "carrier" : "K10",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k10"
+            ]
+          },
           {
             "carrier" : "K11",
             "child" : "C",
@@ -1271,11 +1163,11 @@
             ]
           },
           {
-            "carrier" : "K2",
+            "carrier" : "K12",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k2"
+              "k12"
             ]
           },
           {
@@ -1295,6 +1187,22 @@
             ]
           },
           {
+            "carrier" : "K5",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k5"
+            ]
+          },
+          {
+            "carrier" : "K6",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k6"
+            ]
+          },
+          {
             "carrier" : "K7",
             "child" : "C",
             "count" : 1,
@@ -1303,11 +1211,212 @@
             ]
           },
           {
-            "carrier" : "K9",
+            "carrier" : "K8",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k9"
+              "k8"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "K9",
+      "child" : "C",
+      "grinds" : [
+        "k9"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "k1",
+            "k2",
+            "k3",
+            "k9"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 8,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "K10",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k10"
+            ]
+          },
+          {
+            "carrier" : "K11",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k11"
+            ]
+          },
+          {
+            "carrier" : "K12",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k12"
+            ]
+          },
+          {
+            "carrier" : "K4",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k4"
+            ]
+          },
+          {
+            "carrier" : "K5",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k5"
+            ]
+          },
+          {
+            "carrier" : "K6",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k6"
+            ]
+          },
+          {
+            "carrier" : "K7",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k7"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "K3",
+      "child" : "C",
+      "grinds" : [
+        "k3"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "k1",
+            "k10",
+            "k2",
+            "k3",
+            "k9"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 7,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "K11",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k11"
+            ]
+          },
+          {
+            "carrier" : "K12",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k12"
+            ]
+          },
+          {
+            "carrier" : "K4",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k4"
+            ]
+          },
+          {
+            "carrier" : "K5",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k5"
+            ]
+          },
+          {
+            "carrier" : "K6",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k6"
+            ]
+          },
+          {
+            "carrier" : "K7",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k7"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
             ]
           }
         ],
@@ -1338,10 +1447,100 @@
             "k1",
             "k10",
             "k12",
-            "k4",
+            "k2",
+            "k3",
+            "k9"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 6,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "K11",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k11"
+            ]
+          },
+          {
+            "carrier" : "K4",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k4"
+            ]
+          },
+          {
+            "carrier" : "K5",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k5"
+            ]
+          },
+          {
+            "carrier" : "K6",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k6"
+            ]
+          },
+          {
+            "carrier" : "K7",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k7"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "K12",
+      "child" : "C",
+      "grinds" : [
+        "k12"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "k1",
+            "k10",
+            "k12",
+            "k2",
+            "k3",
             "k5",
-            "k6",
-            "k8"
+            "k9"
           ],
           "G" : [
             "n1"
@@ -1362,19 +1561,19 @@
             ]
           },
           {
-            "carrier" : "K2",
+            "carrier" : "K4",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k2"
+              "k4"
             ]
           },
           {
-            "carrier" : "K3",
+            "carrier" : "K6",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k3"
+              "k6"
             ]
           },
           {
@@ -1386,11 +1585,11 @@
             ]
           },
           {
-            "carrier" : "K9",
+            "carrier" : "K8",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k9"
+              "k8"
             ]
           }
         ],
@@ -1407,10 +1606,10 @@
           "G" : "tree"
         }
       },
-      "carrier" : "K4",
+      "carrier" : "K5",
       "child" : "C",
       "grinds" : [
-        "k4"
+        "k5"
       ],
       "kind" : "answer"
     },
@@ -1420,12 +1619,12 @@
           "C" : [
             "k1",
             "k10",
-            "k11",
             "k12",
-            "k4",
+            "k2",
+            "k3",
             "k5",
-            "k6",
-            "k8"
+            "k7",
+            "k9"
           ],
           "G" : [
             "n1"
@@ -1438,35 +1637,166 @@
         "hosted" : true,
         "jobs" : [
           {
-            "carrier" : "K2",
+            "carrier" : "K11",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k2"
+              "k11"
             ]
           },
           {
-            "carrier" : "K3",
+            "carrier" : "K4",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k3"
+              "k4"
             ]
           },
           {
-            "carrier" : "K7",
+            "carrier" : "K6",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k7"
+              "k6"
             ]
           },
           {
-            "carrier" : "K9",
+            "carrier" : "K8",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k9"
+              "k8"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "K7",
+      "child" : "C",
+      "grinds" : [
+        "k7"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "k1",
+            "k10",
+            "k12",
+            "k2",
+            "k3",
+            "k5",
+            "k6",
+            "k7",
+            "k9"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 3,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "K11",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k11"
+            ]
+          },
+          {
+            "carrier" : "K4",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k4"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
+            ]
+          }
+        ],
+        "peerQ" : {
+          "C" : [
+
+          ],
+          "G" : [
+
+          ]
+        },
+        "status" : {
+          "C" : "tree",
+          "G" : "tree"
+        }
+      },
+      "carrier" : "K6",
+      "child" : "C",
+      "grinds" : [
+        "k6"
+      ],
+      "kind" : "answer"
+    },
+    {
+      "after" : {
+        "credited" : {
+          "C" : [
+            "k1",
+            "k10",
+            "k11",
+            "k12",
+            "k2",
+            "k3",
+            "k5",
+            "k6",
+            "k7",
+            "k9"
+          ],
+          "G" : [
+            "n1"
+          ]
+        },
+        "deriving" : {
+          "C" : 2,
+          "G" : 0
+        },
+        "hosted" : true,
+        "jobs" : [
+          {
+            "carrier" : "K4",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k4"
+            ]
+          },
+          {
+            "carrier" : "K8",
+            "child" : "C",
+            "count" : 1,
+            "grinds" : [
+              "k8"
             ]
           }
         ],
@@ -1498,143 +1828,12 @@
             "k10",
             "k11",
             "k12",
-            "k4",
-            "k5",
-            "k6",
-            "k8",
-            "k9"
-          ],
-          "G" : [
-            "n1"
-          ]
-        },
-        "deriving" : {
-          "C" : 3,
-          "G" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "K2",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k2"
-            ]
-          },
-          {
-            "carrier" : "K3",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k3"
-            ]
-          },
-          {
-            "carrier" : "K7",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k7"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C" : [
-
-          ],
-          "G" : [
-
-          ]
-        },
-        "status" : {
-          "C" : "tree",
-          "G" : "tree"
-        }
-      },
-      "carrier" : "K9",
-      "child" : "C",
-      "grinds" : [
-        "k9"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C" : [
-            "k1",
-            "k10",
-            "k11",
-            "k12",
-            "k4",
-            "k5",
-            "k6",
-            "k7",
-            "k8",
-            "k9"
-          ],
-          "G" : [
-            "n1"
-          ]
-        },
-        "deriving" : {
-          "C" : 2,
-          "G" : 0
-        },
-        "hosted" : true,
-        "jobs" : [
-          {
-            "carrier" : "K2",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k2"
-            ]
-          },
-          {
-            "carrier" : "K3",
-            "child" : "C",
-            "count" : 1,
-            "grinds" : [
-              "k3"
-            ]
-          }
-        ],
-        "peerQ" : {
-          "C" : [
-
-          ],
-          "G" : [
-
-          ]
-        },
-        "status" : {
-          "C" : "tree",
-          "G" : "tree"
-        }
-      },
-      "carrier" : "K7",
-      "child" : "C",
-      "grinds" : [
-        "k7"
-      ],
-      "kind" : "answer"
-    },
-    {
-      "after" : {
-        "credited" : {
-          "C" : [
-            "k1",
-            "k10",
-            "k11",
-            "k12",
+            "k2",
             "k3",
             "k4",
             "k5",
             "k6",
             "k7",
-            "k8",
             "k9"
           ],
           "G" : [
@@ -1648,11 +1847,11 @@
         "hosted" : true,
         "jobs" : [
           {
-            "carrier" : "K2",
+            "carrier" : "K8",
             "child" : "C",
             "count" : 1,
             "grinds" : [
-              "k2"
+              "k8"
             ]
           }
         ],
@@ -1669,10 +1868,10 @@
           "G" : "tree"
         }
       },
-      "carrier" : "K3",
+      "carrier" : "K4",
       "child" : "C",
       "grinds" : [
-        "k3"
+        "k4"
       ],
       "kind" : "answer"
     },
@@ -1718,10 +1917,10 @@
           "G" : "tree"
         }
       },
-      "carrier" : "K2",
+      "carrier" : "K8",
       "child" : "C",
       "grinds" : [
-        "k2"
+        "k8"
       ],
       "kind" : "answer"
     }
@@ -1816,7 +2015,7 @@
     "k11",
     "k12"
   ],
-  "name" : "testMoreCarriersThanTheHeaderCapAllCredit",
+  "name" : "testOnlineLateAndRestartedHostsAgree-restarted",
   "real" : {
     "C" : "k1",
     "G" : "n1"

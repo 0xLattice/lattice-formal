@@ -15,12 +15,27 @@
 (*                                                                         *)
 (* A child block is unknown, awaiting (in memory, waiting for its first   *)
 (* proof; at most Cap at once), pending (in memory: credited, waiting for *)
-(* its parent to be in the tree; evictable by the pending budget) or in   *)
-(* the tree (durable, with its credits).  With DeferSettle a credited     *)
-(* block stays pending after its parent is in the tree until a separate   *)
-(* (fair) Settle step weighs it, as a pending header waits for its child  *)
-(* index or its timestamp; without it, the credit that promotes it also   *)
-(* weighs it when its parent is in the tree.                               *)
+(* its parent to be in the tree or for its children index; evictable by   *)
+(* the pending budget) or in the tree (durable, with its credits).  With  *)
+(* DeferSettle a credited block stays pending after its parent is in the  *)
+(* tree until a separate (fair) Settle step weighs it, as a pending       *)
+(* header waits for its timestamp; without it, the step that promotes it  *)
+(* also weighs it when its parent is in the tree and its index is held:   *)
+(* the step weighs what it can before the budget evicts.                  *)
+(*                                                                         *)
+(* Children index (idx): a block arrives with its index inline ("held")   *)
+(* or, with IndexFetched, without it ("asked": a request to an announcer).  A nil answer      *)
+(* keeps the header and its credits: it is asked of the next announcer    *)
+(* ("asked" again) or, with none left, waits ("waiting") until a tick     *)
+(* re-asks its stream hole.  Nobody is blamed.  An index asked again and  *)
+(* again is eventually served (its author holds it and pushes the block   *)
+(* until it is weighed).                                                   *)
+(*                                                                         *)
+(* Proof queue: queued peer proofs (peerQ) never exceed the operator's    *)
+(* total budget QBudget.  A proof over it is dropped without blame and    *)
+(* its hole stays lacking (lack); a later tick re-asks it.  An honest     *)
+(* peer logs a block once: while its relay's hole is lacking it waits to  *)
+(* be asked again.  A blamed honest peer is disconnected (honest).        *)
 (*                                                                         *)
 (* Carriers' credited grind sets (cgr) only grow.  With Grow, the parent  *)
 (* level is itself a child level X: a carrier is weighed with some of its *)
@@ -63,19 +78,17 @@
 (* Assumptions.  Converges is claimed only under these:                    *)
 (*  (A1) no operator finality window, or only blocks within it (a block   *)
 (*       past finality is declined, and nothing here weighs it);           *)
-(*  (A2) the author submits its block with inline children, so a pending  *)
-(*       block never waits on a child-index fetch;                         *)
-(*  (A3) pending-budget pressure eventually leaves room: pending          *)
-(*       evictions are bounded (MaxEvicts).  This is a known limit of the *)
-(*       existing node sync: the budget evicts the largest-hash pending   *)
+(*  (A3) pending-budget pressure on blocks the node cannot weigh yet      *)
+(*       eventually leaves room: evictions of orphans (parent not in the  *)
+(*       tree) and of blocks waiting on their index or timestamp are      *)
+(*       bounded (MaxEvicts).  The budget evicts the largest-hash pending *)
 (*       leaf and orphans never expire, so unbounded pressure can evict   *)
-(*       the same block forever;                                           *)
+(*       such a block forever.  Any other pending block may be evicted    *)
+(*       without bound: that none ever is (a block promoted above a       *)
+(*       weighed parent is weighed in its step, before the budget runs)   *)
+(*       is checked, not assumed;                                          *)
 (*  (A4) failing proofs and purges (MaxStrikes), restarts (MaxRestarts)   *)
 (*       and unhosts (MaxUnhosts) are bounded.                             *)
-(* Two existing sync limits are outside the model, slated for a follow-up *)
-(* node PR: a failed children-index fetch drops pending entries (A2 is    *)
-(* what excludes it), and the per-peer awaiting cap refuses a peer's      *)
-(* headers past it.                                                        *)
 (***************************************************************************)
 EXTENDS Naturals, FiniteSets
 
@@ -86,10 +99,12 @@ CONSTANTS
     AuthorStopsOnCredit,\* the author stops at the first credit, not weighing
     DeferSettle,        \* a credited block may stay pending above a tree parent
     ParentsFetched,     \* only leaves are pushed; parents come by ancestor fetch
+    IndexFetched,       \* a block may arrive without its children index
     MaxRestarts,
     MaxUnhosts,
     MaxEvicts,
-    MaxStrikes
+    MaxStrikes,
+    QBudget             \* the operator's total budget of queued peer proofs
 
 Carriers == {"B1", "B2", "B3"}
 Children == {"C1", "C2"}
@@ -111,7 +126,7 @@ JobKeys == UNION {{<<b, Commit[b], G>> : G \in SUBSET GrindsOf(b) \ {{}}} : b \i
 
 ASSUME Cap \in Nat \ {0} /\ Grow \in BOOLEAN /\ PeerPush \in BOOLEAN
        /\ AuthorStopsOnCredit \in BOOLEAN /\ DeferSettle \in BOOLEAN
-       /\ ParentsFetched \in BOOLEAN
+       /\ ParentsFetched \in BOOLEAN /\ IndexFetched \in BOOLEAN /\ QBudget \in Nat \ {0}
 
 VARIABLES
     weighed,    \* carriers in the parent level's tree (persisted)
@@ -124,12 +139,15 @@ VARIABLES
     deriving,   \* child -> jobs counted since the last restart or unhost
     peerQ,      \* child -> peer proofs queued or in a check
     fetch,      \* pending blocks whose one ancestor request is unanswered
+    idx,        \* child -> its children index: "held" | "asked" | "waiting"
+    lack,       \* <<child, proof>> holes whose proof was dropped over budget
+    honest,     \* honest peers connected (only blame disconnects them)
     hosted,     \* Y
     xHosted,    \* X (always TRUE without Grow)
     restarts, unhosts, evicts, strikes
 
 vars == <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ,
-          fetch, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+          fetch, idx, lack, honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
 InTree(c) == status[c] = "tree"
 Known(st, c) == st[c] # "unknown"
@@ -147,6 +165,9 @@ Wanted(c) == Committers(c) # {} \/ \E x \in Children : Parent[x] = c /\ status[x
 NoJobs == [k \in JobKeys |-> 0]
 NoDeriving == [c \in Children |-> 0]
 NoPeer == [c \in Children |-> {}]
+AllHeld == [c \in Children |-> "held"]
+\* Peer proofs queued or in a check, all sources together.
+QSize(pq) == Cardinality(UNION {{<<c, p>> : p \in pq[c]} : c \in Children})
 \* The blocks someone pushes until weighed.
 Pushed == IF ParentsFetched THEN {c \in Children : ~\E x \in Children : Parent[x] = c} ELSE Children
 
@@ -163,10 +184,12 @@ Issued(js, S) == S
 AddJobs(js, S) == [k \in JobKeys |-> IF k \in S THEN js[k] + 1 ELSE js[k]]
 AddDeriving(dv, S) == [c \in Children |-> dv[c] + Cardinality({k \in S : k[2] = c})]
 
-\* A pending block whose parent is in the tree is weighed (twice: C1 then C2).
-Settle1(st) == [c \in Children |-> IF st[c] = "pending" /\ (Parent[c] = "genesis" \/ st[Parent[c]] = "tree")
-                                    THEN "tree" ELSE st[c]]
-Settle(st) == Settle1(Settle1(st))
+\* A pending block whose parent is in the tree and whose index is held is
+\* weighed (twice: C1 then C2).
+Settle1(st, ix) == [c \in Children |-> IF st[c] = "pending" /\ (Parent[c] = "genesis" \/ st[Parent[c]] = "tree")
+                                           /\ ix[c] = "held"
+                                        THEN "tree" ELSE st[c]]
+Settle(st, ix) == Settle1(Settle1(st, ix), ix)
 
 Holds(dv, pq, y) == dv[y] > 0 \/ pq[y] # {}
 
@@ -179,7 +202,7 @@ Admit(st, dv, pq, c) ==
 
 \* Credit P at c (known in st), D of it derived; the first credit of an
 \* awaiting block promotes it to pending, weighed once its parent is.
-Promote(st, c) == IF DeferSettle THEN [st EXCEPT ![c] = "pending"] ELSE Settle([st EXCEPT ![c] = "pending"])
+Promote(st, c) == IF DeferSettle THEN [st EXCEPT ![c] = "pending"] ELSE Settle([st EXCEPT ![c] = "pending"], idx)
 Credit(st, c, P, D) ==
     /\ credited' = [credited EXCEPT ![c] = @ \cup P]
     /\ dcred' = [dcred EXCEPT ![c] = @ \cup D]
@@ -196,6 +219,7 @@ Lose(kept) ==
     /\ status' = [c \in Children |-> IF c \in kept THEN status[c] ELSE "unknown"]
     /\ credited' = [c \in Children |-> IF c \in kept THEN credited[c] ELSE {}]
     /\ dcred' = [c \in Children |-> IF c \in kept THEN dcred[c] ELSE {}]
+    /\ idx' = AllHeld
 
 Init ==
     /\ weighed = {}
@@ -208,6 +232,9 @@ Init ==
     /\ deriving = NoDeriving
     /\ peerQ = NoPeer
     /\ fetch = {}
+    /\ idx = AllHeld
+    /\ lack = {}
+    /\ honest = TRUE
     /\ hosted = TRUE
     /\ xHosted = TRUE
     /\ restarts = 0 /\ unhosts = 0 /\ evicts = 0 /\ strikes = 0
@@ -228,7 +255,7 @@ Weigh(b) ==
          IN /\ weighed' = weighed \cup {b}
             /\ cgr' = cg
             /\ Retrigger(b, cg)
-    /\ UNCHANGED <<status, credited, dcred, seen, peerQ, fetch, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<status, credited, dcred, seen, peerQ, fetch, idx, lack, honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
 \* A weighed X block is credited another grind: its work changed, so it
 \* re-triggers like a weigh.
@@ -237,16 +264,30 @@ GrowGrind(b, g) ==
     /\ LET cg == [cgr EXCEPT ![b] = @ \cup {g}]
        IN /\ cgr' = cg
           /\ Retrigger(b, cg)
-    /\ UNCHANGED <<weighed, status, credited, dcred, seen, peerQ, fetch, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<weighed, status, credited, dcred, seen, peerQ, fetch, idx, lack, honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
-\* Unknown c enters awaiting (refused when Admit is empty); its arrival
-\* derives (trigger (b)).
+\* Unknown c enters awaiting (refused when Admit is empty), its children
+\* index inline or asked of its announcer; its arrival derives (trigger (b)).
 Arrive(c) ==
-    \E st \in Admit(status, deriving, peerQ, c) :
+    \E st \in Admit(status, deriving, peerQ, c), ix \in IF IndexFetched THEN {"held", "asked"} ELSE {"held"} :
         LET S == Issued(jobs, ArrivalJobs(st, {c}))
         IN /\ status' = st
+           /\ idx' = [x \in Children |-> IF x = c THEN ix ELSE IF st[x] = "unknown" THEN "held" ELSE idx[x]]
            /\ jobs' = AddJobs(jobs, S)
            /\ deriving' = AddDeriving(deriving, S)
+
+\* Over the budget a proof is dropped without blame: its hole stays lacking.
+Drop(c, p) == lack' = lack \cup {<<c, p>>} /\ UNCHANGED honest
+
+\* Queue p for c within the operator's total budget, or drop it (a proof
+\* already queued is the same proof, not another).
+Offer(c, p) ==
+    IF p \in peerQ[c] \/ QSize(peerQ) < QBudget
+      THEN /\ peerQ' = [peerQ EXCEPT ![c] = @ \cup {p}]
+           /\ lack' = lack \ {<<c, p>>}
+           /\ UNCHANGED honest
+      ELSE /\ UNCHANGED peerQ
+           /\ Drop(c, p)
 
 \* c is sent with proof p or none ("none").  A known block only queues a
 \* new proof.  An unknown block without a proof is taken only if wanted.
@@ -258,11 +299,11 @@ Gossip(c, p) ==
           /\ strikes' = IF bad THEN strikes + 1 ELSE strikes
     /\ IF Known(status, c)
          THEN /\ p # "none" /\ p \notin peerQ[c] /\ p \notin credited[c]
-              /\ peerQ' = [peerQ EXCEPT ![c] = @ \cup {p}]
-              /\ UNCHANGED <<status, jobs, deriving>>
+              /\ Offer(c, p)
+              /\ UNCHANGED <<status, idx, jobs, deriving>>
          ELSE /\ p # "none" \/ Wanted(c)
               /\ Arrive(c)
-              /\ peerQ' = IF p = "none" THEN peerQ ELSE [peerQ EXCEPT ![c] = @ \cup {p}]
+              /\ IF p = "none" THEN UNCHANGED <<peerQ, lack, honest>> ELSE Offer(c, p)
     /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, fetch, hosted, xHosted, restarts, unhosts, evicts>>
 
 \* The author submits c to its own node or gossips it, until it is weighed.
@@ -271,8 +312,45 @@ AuthorPush(c) ==
     /\ (AuthorStopsOnCredit => c \notin seen)
     /\ Gossip(c, "none")
 
-\* An honest peer re-sends c with its real proof until it is weighed.
-PeerSend(c) == PeerPush /\ c \in Pushed /\ ~InTree(c) /\ Gossip(c, Real[c])
+\* An honest peer re-sends c with its real proof until it is weighed, but
+\* not while its relay's hole is lacking here: it waits to be asked again.
+PeerSend(c) == PeerPush /\ honest /\ c \in Pushed /\ ~InTree(c) /\ <<c, Real[c]>> \notin lack
+               /\ Gossip(c, Real[c])
+
+\* A tick re-asks a lacking proof hole: filled already, or sent again.
+ReAskProof(c, p) ==
+    /\ hosted /\ <<c, p>> \in lack
+    /\ IF Known(status, c) /\ (p \in peerQ[c] \/ p \in credited[c])
+         THEN /\ lack' = lack \ {<<c, p>>}
+              /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ, fetch, idx,
+                             honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+         ELSE Gossip(c, p)
+
+\* A pending block's children index is served: the step weighs what it can.
+IndexServed(c) ==
+    /\ status[c] = "pending" /\ idx[c] = "asked"
+    /\ LET ix == [idx EXCEPT ![c] = "held"]
+       IN /\ idx' = ix
+          /\ status' = IF DeferSettle THEN status ELSE Settle(status, ix)
+    /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, jobs, deriving, peerQ, fetch, lack, honest, hosted, xHosted,
+                   restarts, unhosts, evicts, strikes>>
+
+\* A nil index answer: the announcer lacks what its header commits.  The
+\* header and its credits are kept; it is asked of its next announcer, or
+\* with none left waits for a tick.  Nobody is blamed.
+NilKeeps(c) == idx' \in {[idx EXCEPT ![c] = "asked"], [idx EXCEPT ![c] = "waiting"]} /\ UNCHANGED <<status, credited, dcred>>
+IndexNil(c) ==
+    /\ status[c] = "pending" /\ idx[c] = "asked"
+    /\ NilKeeps(c)
+    /\ UNCHANGED <<weighed, cgr, seen, jobs, deriving, peerQ, fetch, lack, honest, hosted, xHosted,
+                   restarts, unhosts, evicts, strikes>>
+
+\* A tick re-asks the stream hole of a header waiting on nobody.
+ReAskIndex(c) ==
+    /\ status[c] = "pending" /\ idx[c] = "waiting"
+    /\ idx' = [idx EXCEPT ![c] = "asked"]
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ, fetch, lack, honest, hosted,
+                   xHosted, restarts, unhosts, evicts, strikes>>
 
 \* A peer's proof is judged on its own: it verifies against its root,
 \* whether or not this node weighed the carrier.
@@ -282,7 +360,7 @@ CheckPeerProof(c, p) ==
     /\ IF Valid(c, p) /\ Known(status, c)
          THEN Credit(status, c, {p}, {})
          ELSE UNCHANGED <<status, credited, dcred, seen, fetch>>
-    /\ UNCHANGED <<weighed, cgr, jobs, deriving, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<weighed, cgr, jobs, deriving, idx, lack, honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
 \* The ancestor answer: x's parent, without proofs, taken as any proofless
 \* arrival is (only if wanted), else dropped and never asked again.
@@ -293,14 +371,15 @@ ParentAnswer(x) ==
        IN IF /\ hosted /\ status[x] = "pending" /\ ~Known(status, c) /\ Wanted(c)
              /\ Admit(status, deriving, peerQ, c) # {}
             THEN Arrive(c)
-            ELSE UNCHANGED <<status, jobs, deriving>>
-    /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, peerQ, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+            ELSE UNCHANGED <<status, idx, jobs, deriving>>
+    /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, peerQ, lack, honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
 Purge ==
     /\ peerQ # NoPeer /\ strikes < MaxStrikes
     /\ strikes' = strikes + 1
     /\ peerQ' = NoPeer
-    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, fetch, hosted, xHosted, restarts, unhosts, evicts>>
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, fetch, idx, lack, honest, hosted, xHosted,
+                   restarts, unhosts, evicts>>
 
 \* Whether an answer is applied, given the count before it is taken off.
 Applies(dv, c) == TRUE
@@ -321,24 +400,32 @@ Answer(k) ==
               /\ IF Known(status, c)
                    THEN Credit(status, c, P, P)
                    ELSE UNCHANGED <<status, credited, dcred, seen, fetch>>
-    /\ UNCHANGED <<weighed, cgr, peerQ, hosted, xHosted, restarts, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<weighed, cgr, peerQ, idx, lack, honest, hosted, xHosted, restarts, unhosts, evicts, strikes>>
 
-\* The pending budget evicts a pending leaf (the code: the largest hash).
+\* Blocks the node cannot weigh yet: orphans, and blocks waiting on their
+\* index or (with DeferSettle) their timestamp.  Only their evictions are
+\* bounded (A3).
+Unweighable(v) == (Parent[v] # "genesis" /\ status[Parent[v]] # "tree") \/ idx[v] # "held" \/ DeferSettle
+
+\* The pending budget evicts a pending leaf (the code: the largest hash),
+\* once the step's headers are processed.  Any other pending block may be
+\* evicted without bound: none is ever pending here (CreditHeld).
 EvictPending ==
-    /\ evicts < MaxEvicts
     /\ \E v \in {c \in Children : status[c] = "pending"} :
          /\ ~\E x \in Children : Parent[x] = v /\ status[x] = "pending"
+         /\ Unweighable(v) => evicts < MaxEvicts
          /\ status' = [status EXCEPT ![v] = "unknown"]
          /\ credited' = [credited EXCEPT ![v] = {}]
          /\ dcred' = [dcred EXCEPT ![v] = {}]
-    /\ evicts' = evicts + 1
-    /\ UNCHANGED <<weighed, cgr, seen, jobs, deriving, peerQ, fetch, hosted, xHosted, restarts, unhosts, strikes>>
+         /\ idx' = [idx EXCEPT ![v] = "held"]
+         /\ evicts' = IF Unweighable(v) THEN evicts + 1 ELSE evicts
+    /\ UNCHANGED <<weighed, cgr, seen, jobs, deriving, peerQ, fetch, lack, honest, hosted, xHosted, restarts, unhosts, strikes>>
 
 \* With DeferSettle: pending blocks whose parent is in the tree are weighed.
 SettleStep ==
-    /\ hosted /\ Settle(status) # status
-    /\ status' = Settle(status)
-    /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, jobs, deriving, peerQ, fetch, hosted, xHosted,
+    /\ hosted /\ Settle(status, idx) # status
+    /\ status' = Settle(status, idx)
+    /\ UNCHANGED <<weighed, cgr, credited, dcred, seen, jobs, deriving, peerQ, fetch, idx, lack, honest, hosted, xHosted,
                    restarts, unhosts, evicts, strikes>>
 
 \* The boot pass: every block in the tree arrives.
@@ -350,10 +437,11 @@ Restart ==
     /\ Lose(Durable(status))
     /\ peerQ' = NoPeer
     /\ fetch' = {}
+    /\ lack' = {}
     /\ LET S == IF hosted THEN Issued(NoJobs, BootKeys(status)) ELSE {}
        IN /\ jobs' = AddJobs(NoJobs, S)
           /\ deriving' = AddDeriving(NoDeriving, S)
-    /\ UNCHANGED <<weighed, cgr, seen, hosted, xHosted, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<weighed, cgr, seen, honest, hosted, xHosted, unhosts, evicts, strikes>>
 
 \* Unhost Y, or (x, with Grow) X with its descendant Y.
 Unhost(x) ==
@@ -367,13 +455,15 @@ Unhost(x) ==
               /\ deriving' = NoDeriving
               /\ peerQ' = NoPeer
               /\ fetch' = {}
-         ELSE UNCHANGED <<status, credited, dcred, deriving, peerQ, fetch>>
-    /\ UNCHANGED <<weighed, cgr, seen, jobs, restarts, evicts, strikes>>
+              /\ lack' = {}
+         ELSE UNCHANGED <<status, credited, dcred, idx, deriving, peerQ, fetch, lack>>
+    /\ UNCHANGED <<weighed, cgr, seen, jobs, honest, restarts, evicts, strikes>>
 
 RehostX ==
     /\ ~xHosted
     /\ xHosted' = TRUE
-    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ, fetch, hosted, restarts, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, jobs, deriving, peerQ, fetch, idx, lack, honest, hosted,
+                   restarts, unhosts, evicts, strikes>>
 
 Rehost ==
     /\ ~hosted /\ xHosted
@@ -381,7 +471,8 @@ Rehost ==
     /\ LET S == Issued(jobs, BootKeys(status))
        IN /\ jobs' = AddJobs(jobs, S)
           /\ deriving' = AddDeriving(NoDeriving, S)
-    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, peerQ, fetch, xHosted, restarts, unhosts, evicts, strikes>>
+    /\ UNCHANGED <<weighed, cgr, status, credited, dcred, seen, peerQ, fetch, idx, lack, honest, xHosted,
+                   restarts, unhosts, evicts, strikes>>
 
 Next ==
     \/ \E b \in Carriers : Weigh(b)
@@ -394,16 +485,20 @@ Next ==
     \/ EvictPending
     \/ SettleStep
     \/ \E x \in Children : ParentAnswer(x)
+    \/ \E c \in Children, p \in PeerProofs : ReAskProof(c, p)
+    \/ \E c \in Children : IndexServed(c) \/ IndexNil(c) \/ ReAskIndex(c)
     \/ Restart \/ Unhost(TRUE) \/ Unhost(FALSE) \/ RehostX \/ Rehost
 
 \* Every job answers and every queued proof is checked; the author pushes
 \* each block until it is weighed (and honest peers too, with PeerPush);
 \* an unhosted level is eventually hosted again; a block pending above a
-\* tree parent is weighed; an ancestor request is answered.
+\* tree parent is weighed; an ancestor request is answered; a tick re-asks
+\* every lacking hole; an index asked again and again is served.
 Fairness ==
     /\ \A k \in JobKeys : WF_vars(Answer(k))
-    /\ \A c \in Children, p \in PeerProofs : WF_vars(CheckPeerProof(c, p))
+    /\ \A c \in Children, p \in PeerProofs : WF_vars(CheckPeerProof(c, p)) /\ WF_vars(ReAskProof(c, p))
     /\ \A c \in Children : WF_vars(AuthorPush(c)) /\ WF_vars(PeerSend(c)) /\ WF_vars(ParentAnswer(c))
+    /\ \A c \in Children : WF_vars(ReAskIndex(c)) /\ SF_vars(IndexServed(c))
     /\ WF_vars(RehostX) /\ WF_vars(Rehost) /\ WF_vars(SettleStep)
 
 Spec == Init /\ [][Next]_vars /\ Fairness
@@ -420,7 +515,11 @@ TypeOK ==
     /\ deriving \in [Children -> Nat]
     /\ peerQ \in [Children -> SUBSET PeerProofs]
     /\ fetch \subseteq Children
+    /\ idx \in [Children -> {"held", "asked", "waiting"}]
+    /\ lack \subseteq Children \X PeerProofs
+    /\ honest \in BOOLEAN
     /\ Cardinality(Awaiting(status)) <= Cap
+    /\ QSize(peerQ) <= QBudget
 
 \* Every credit is a grind some verified root carries for the block and
 \* meets its target, whether or not this node weighed its carrier.
@@ -431,12 +530,13 @@ Safety == \A c \in Children : credited[c] \subseteq Verifiable(c)
 DerivedSafety == \A c \in Children : dcred[c] \subseteq credited[c] /\ dcred[c] \subseteq Full(c)
 
 \* Credit sits exactly on pending and tree blocks; a block is in the tree
-\* only above its parent, and (without DeferSettle) pending only while its
-\* parent is not.
+\* only above its parent, and (without DeferSettle) pending with its index
+\* held only while its parent is not: no block the node can weigh is left
+\* for the budget to evict.
 CreditHeld ==
     \A c \in Children :
         /\ (credited[c] # {}) = (status[c] \in {"pending", "tree"})
-        /\ ~DeferSettle /\ status[c] = "pending" => Parent[c] # "genesis" /\ status[Parent[c]] # "tree"
+        /\ ~DeferSettle /\ status[c] = "pending" /\ idx[c] = "held" => Parent[c] # "genesis" /\ status[Parent[c]] # "tree"
         /\ status[c] = "tree" => Parent[c] = "genesis" \/ status[Parent[c]] = "tree"
 
 \* With nothing in flight, every credited block holds all it is owed.
