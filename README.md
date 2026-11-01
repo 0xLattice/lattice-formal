@@ -2,7 +2,7 @@
 
 Formal models of the Lattice protocol: TLA+ models checked with TLC, trace
 validation of the implementation against them, and Lean proofs of value
-conservation and of the Merkle state commitments.
+conservation, of the Merkle state commitments and of child commitments.
 
 The models are written from the normative specification
 ([Lattice `docs/spec.md`](https://github.com/0xLattice/Lattice/blob/main/docs/spec.md)),
@@ -1295,6 +1295,71 @@ there and the node restarts before the block's parent is in the tree, the
 block is gone and nothing brings it back: `C2` is credited by a peer proof
 while `C1` is unknown, the node restarts, and `C2` never returns although
 `C1` is later weighed. Authors must push until the block is weighed.
+
+## Child commitments and derived proofs (`lean/LatticeProofs/ChildCommit.lean`)
+
+Lean proofs, theorems in `ChildCommitProofs.lean`, of four rules Lattice
+56.1.0 uses to tie a child block to its carrier and credit it. Each rule is
+modelled from the spec where the spec states it, and from the code where it
+is silent:
+
+- **`child/X = C@P`** (code, `Block.validateChildCommitments`; the spec does
+  not state it). A general-state action writing `child/X` = `C@P` makes its
+  block valid only if the block's `children` index holds exactly `C` at `X`
+  and its `prevState` is `P`. A delete commits nothing; a value is split at
+  its one `@`, both sides non-empty.
+- **A proof is a header path** (§5.3 steps 2–4, §9.5): every link is a
+  `children[d]` edge whose child's `parentState` is its carrier's
+  `prevState`, and the root's grind must meet the terminal's target.
+  Composition (code, `composing(hop:)` and lattice-node's `extending`) keeps
+  the upstream root and appends the hop's directories.
+- **Credit by location** (§9.1): one credit per `(grind root, block)`, a
+  repeated observation keeping the strongest quantity.
+- **Run binding** (§9.10, `applyParentRun`): the run of carrier `K` credits
+  the committed child `C` only if `C.parentState == K.prevState`.
+
+| Theorem | Assumes | Spec |
+|---|---|---|
+| `commitsValid_iff`, `valid_decidable`: the rule is a function of the carrier's `prevState`, actions and `children` index; no child block is read | — | code |
+| `commit_sound`, `stale_invalid`, `absent_invalid`: a valid carrier committing `child/X = C@P` has `children[X] = C` and `prevState = P`; a stale `P` or an absent `C` makes it invalid | — | code |
+| `commit_values_agree`: two commitments to one `X` that both satisfy the rule have equal values | — | code |
+| `commit_unique`: in a valid carrier, the actions committing into one `X` are one action | two actions on one key conflict (code; §6.3 is silent) | code |
+| `compose_assoc`: composition is associative | — | code |
+| `compose_valid`, `compose_terminal`, `verifies_compose`: a composed path is valid exactly when both parts are, ends where the hop ends, and verifies exactly when the upstream path is valid and the hop verifies under the upstream root's grind | the hop is rooted at the upstream's terminal; the hop is non-empty | §5.3, §9.5 |
+| `derived_sound`: a valid path from a grind root to carrier `B`, composed with `B`'s hop to the `C` at `children[X]`, verifies for `C` exactly when the grind meets `C`'s target | `C` anchors at `B.prevState` | §5.3, §9.5 |
+| `verifies_on_path`, `not_verifies_off_path`: no proof verifies for a block that is not on its path | — | §5.3 step 2 |
+| `insert_idem`, `insert_comm`: inserting a credit twice is inserting it once; order does not matter | — | §9.1 |
+| `applyAll_le_iff`, `applyAll_attained`, `no_double_credit`, `replicate_credits_once`: a location's credit is the prior credit or one observation's quantity, never a sum, and depends only on which observations were made, not how many proofs, carriers or derivations named them | — | §9.1 |
+| `run_credit_bound`: a run credits `C` through `K` only if `K.children[X] = C` and `C.parentState == K.prevState` | — | §9.10 |
+| `commit_meets_binding`: a valid `K` committing `child/X = C@P` with `C` built on `P` always meets the binding | `C.parentState = P` | code, §9.10 |
+| `stale_no_credit`: a `C` built on a stale `P` never takes `K`'s run, whether or not `K` is valid | `C.parentState = P` | §9.10 |
+
+Readings and limits:
+- **`C@P` does not read `C`.** The rule checks `P` against the carrier, not
+  against `C.parentState`, so `commit_meets_binding` and `stale_no_credit`
+  assume `C` was built on `P`, as the action's author states. A commitment
+  to a `C` whose own `parentState` differs from `P` can be valid and earns no
+  run credit.
+- **Two actions on one directory** are a state conflict, so the block is
+  invalid; `commit_values_agree` holds even without that rule.
+- **A header stands for its CID.** Links compare CIDs, and a proof's headers
+  are the content those CIDs bind, so content addressing is assumed. Path
+  direction against the runtime chain path, the CAS entry accounting and the
+  pricing of the grind (`Work.lean`) are not modelled here; the scheduling of
+  derivations is `specs/DerivedChildGrinds.tla`'s.
+
+### Planted bugs
+
+`scripts/lean_mutants.py`; each mutant makes the named theorems false, so the
+proofs stop building:
+
+| Mutant | Killed by |
+|---|---|
+| the commitment rule skips the `prevState` check | `commitsValid_iff` |
+| the commitment rule skips the `children` check | `commitsValid_iff` |
+| composition puts the hop before the upstream path | `compose_valid`, `compose_terminal` |
+| a credit insert adds instead of keeping the strongest | `insert_idem`, `insert_comm`, `applyAll_le_iff`, `applyAll_attained` |
+| a run credits without the `parentState` binding | `run_credit_bound`, `stale_no_credit` |
 
 ## ASERT difficulty (`lean/LatticeProofs/Asert.lean`)
 
