@@ -19,3 +19,5 @@ import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs
 import LatticeProofs.Asert
 import LatticeProofs.AsertProofs
+import LatticeProofs.ChildCommit
+import LatticeProofs.ChildCommitProofs

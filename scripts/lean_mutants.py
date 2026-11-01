@@ -3,9 +3,9 @@
 
     scripts/lean_mutants.py [value-trace-dir...]
 
-Each mutant breaks one rule of the value model (lean/LatticeProofs/Model.lean)
-or of the Merkle trie model (lean/LatticeProofs/Merkle.lean) and must be
-killed by what it names:
+Each mutant breaks one rule of a Lean model file (the value model
+lean/LatticeProofs/Model.lean unless another file is named beside it) and must
+be killed by what it names:
 - "proofs": the proofs must then fail to build, so the theorems depend on
   that rule;
 - "traces": the model must then disagree with the implementation on some
@@ -205,6 +205,23 @@ MUTANTS = [
     ("split-drops-the-cut-node", {"proofs"},
      "      match Kids.transform (.cons e (.node (e :: rest) v ks) .nil) T with",
      "      match Kids.transform .nil T with", "MerkleBatch.lean"),
+    # Child commitments, derived proofs, credit and run binding (ChildCommit.lean):
+    # only the proofs pin these down.
+    ("commitment-skips-prevstate", {"proofs"},
+     "    | some (c, p) => p == b.prevState && b.children.lookup xv.1 == some c",
+     "    | some (c, _) => b.children.lookup xv.1 == some c", "ChildCommit.lean"),
+    ("commitment-skips-children", {"proofs"},
+     "    | some (c, p) => p == b.prevState && b.children.lookup xv.1 == some c",
+     "    | some (_, p) => p == b.prevState", "ChildCommit.lean"),
+    ("compose-hop-reversed", {"proofs"},
+     "def Proof.compose (p q : Proof) : Proof := ⟨p.root, p.hops ++ q.hops⟩",
+     "def Proof.compose (p q : Proof) : Proof := ⟨p.root, q.hops ++ p.hops⟩", "ChildCommit.lean"),
+    ("credit-insert-adds", {"proofs"},
+     "  fun g' b' => if g' = g ∧ b' = b then max (m g b) w else m g' b'",
+     "  fun g' b' => if g' = g ∧ b' = b then m g b + w else m g' b'", "ChildCommit.lean"),
+    ("run-skips-parentstate-binding", {"proofs"},
+     "  if K.children.lookup X = some C.cid ∧ C.parentState = K.prevState then some (run - grind) else none",
+     "  if K.children.lookup X = some C.cid then some (run - grind) else none", "ChildCommit.lean"),
 ]
 
 # ASERT (Asert.lean). A mutant edits the Swift transcription and, where the

@@ -5,6 +5,7 @@ import LatticeProofs.Swap
 import LatticeProofs.WorkProofs
 import LatticeProofs.KeysProofs
 import LatticeProofs.AsertProofs
+import LatticeProofs.ChildCommitProofs
 
 open Lattice in
 section
@@ -153,4 +154,31 @@ section
 #print axioms prove_complete
 #print axioms prove_live
 #print axioms proof_scope
+end
+
+open Lattice.ChildCommit in
+section
+#print axioms commitsValid_iff
+#print axioms valid_decidable
+#print axioms commit_sound
+#print axioms stale_invalid
+#print axioms absent_invalid
+#print axioms commit_values_agree
+#print axioms commit_unique
+#print axioms compose_assoc
+#print axioms compose_valid
+#print axioms compose_terminal
+#print axioms verifies_compose
+#print axioms derived_sound
+#print axioms verifies_on_path
+#print axioms not_verifies_off_path
+#print axioms insert_idem
+#print axioms insert_comm
+#print axioms applyAll_le_iff
+#print axioms applyAll_attained
+#print axioms no_double_credit
+#print axioms replicate_credits_once
+#print axioms run_credit_bound
+#print axioms commit_meets_binding
+#print axioms stale_no_credit
 end
