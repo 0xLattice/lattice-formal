@@ -34,6 +34,7 @@ jobs:
           - DerivedChildGrinds_PeerPush.cfg
           - DerivedChildGrinds_Index.cfg
           - DerivedChildGrinds_ParentIndex.cfg
+          - TipReads_Main.cfg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -76,6 +77,10 @@ jobs:
           grep -q "Invariant NoCredit is violated" dc.log
           scripts/tlc.sh DerivedChildGrinds_StopOnCredit.cfg | tee ds.log || true
           grep -q "Temporal properties were violated" ds.log
+          scripts/tlc.sh TipReads_PeerRead.cfg | tee tp.log || true
+          grep -q "Invariant NoPeerRead is violated" tp.log
+          scripts/tlc.sh TipReads_Rpc.cfg | tee tr.log || true
+          grep -q "Temporal properties were violated" tr.log
       - name: Planted bugs must be caught
         run: python3 scripts/mutants.py
 
