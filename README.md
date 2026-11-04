@@ -2,9 +2,11 @@
 
 Formal models of the Lattice protocol: TLA+ models checked with TLC, trace
 validation of the implementation against them, and Lean proofs of value
-conservation, of the Merkle state commitments and of child commitments.
+conservation, of the Merkle state commitments and of child commitments. One
+model, `TipReads.tla`, is of reads from a lattice-node host's own store,
+outside the protocol.
 
-The models are written from the normative specification
+The protocol models are written from the normative specification
 ([Lattice `docs/spec.md`](https://github.com/0xLattice/Lattice/blob/main/docs/spec.md)),
 not from the implementation. A passing check means the listed properties hold
 for every interleaving of the modelled facts, within the model's bounds and
@@ -1295,6 +1297,81 @@ there and the node restarts before the block's parent is in the tree, the
 block is gone and nothing brings it back: `C2` is credited by a peer proof
 while `C1` is unknown, the node restarts, and `C2` never returns although
 `C1` is later weighed. Authors must push until the block is weighed.
+
+## Reads of the tip's state (`specs/TipReads.tla`)
+
+Reads of a chain's tip state on a lattice-node host whose store lacks some of
+it. This is not protocol. The spec says nothing about what a host stores, and
+every other model here assumes content is available (`ForkChoice.tla`:
+"availability is the same for every node"; `Recovery.tla` covers the fact
+log, not stored content). On `state: tip` the store is a cache of the tip's
+state, and a node of it can be gone: let go of on a branch switch, swept at a
+start, never fetched.
+
+That happened on the testnet. On lattice-node main a move to another branch
+can leave a node of the new tip's state missing, and no rule brings it back.
+Block execution and templates read what the store lacks through peers, but a
+submitted transaction's preflight read the store alone. So a host on `tip`
+refused every fee-sponsored Moniker name claim as `unavailable`, while a host
+on `all` at the same tip accepted them. lattice-node PR #47 tried to make the
+store whole again (fills, then a state window and a heal). A model of that
+design found crash windows in which a gap is never healed. PR #48 replaces it:
+the store is left a cache, and preflight reads what it lacks through peers as
+the other readers do.
+
+The model follows PR #48 (`NodeRuntime+API.swift`: `miningJob`, `reading`).
+The tip's state is four nodes, `R` over `Acc` (over `A1`) and `Oth`. A read
+needs the path from `R` to its target, as an account read goes through the
+account tree's root. The store loses up to `MaxLosses` nodes for good, and
+memory (`mem`) empties at any time (a restart, the read cache's budget).
+
+A reader in `Through` judges from the store first. Only when that verdict is
+`unavailable` does it judge again through peers: memory first, then the
+honest peer if it is up. What a peer answers is checked against its CID and
+kept in memory, never written to the store. Liars' forged copies fail the
+check. A reader outside `Through` reads the store alone. A preflight's
+transaction may be refused on itself (a bad signature, the wrong chain, a
+stale nonce). A read refused as `unavailable` is retried, fairly.
+
+| Property | Statement |
+|---|---|
+| `RightAnswers` | every answer is judged on the true state: no forged copy is read |
+| `StoreFirst` | a transaction refused on itself costs no request to peers |
+| `Answered` | if the honest peer serves from some point on, every read is answered or refused on itself, whatever the store lost |
+
+| Config | Models |
+|---|---|
+| `TipReads_Main.cfg` | PR #48: preflight and execution (templates read as execution does) both read through peers |
+
+`TipReads_PeerRead.cfg` must fail `NoPeerRead`: a read goes through peers.
+
+### Findings
+
+| Config | Fails | Finding |
+|---|---|---|
+| `TipReads_Rpc.cfg` | `Answered` | RPC reads (`ChainReads`) still read the store alone, which PR #48 lists as a follow-up. Once the store loses `R`, an RPC read of an account is `unavailable` on every retry while the peer serves it |
+
+### Planted bugs
+
+| Mutant | Must be caught by |
+|---|---|
+| preflight reads the store alone (lattice-node main: the testnet failure) | `Answered` |
+| a peer's answer is used without the CID check | `RightAnswers` |
+| preflight asks peers before the store's refusal | `StoreFirst` |
+
+### Readings and limits
+
+- **The store never heals.** Retention is as on main, and gaps stay. A gap no
+  block rewrites costs a peer read on every first use after memory empties,
+  and it depends on some peer (an `all` host, the producer) still holding the
+  node. Cost and fetch budgets are not modelled.
+- **A read through peers is atomic.** `reading` holds one session, so memory
+  emptying mid-read is not modelled.
+- **One tip.** Tip moves and the job's epoch check are not modelled; a read
+  is of the current tip's state.
+- **Anyone can make a host read through peers** by submitting a correctly
+  signed transaction that touches a gap. The overlay's budget bounds this;
+  the model does not.
 
 ## Child commitments and derived proofs (`lean/LatticeProofs/ChildCommit.lean`)
 
