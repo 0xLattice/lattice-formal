@@ -12,11 +12,14 @@
 (* judges from the store first and, only when that verdict is              *)
 (* `unavailable`, again through peers (`NodeRuntime.reading`): what peers  *)
 (* answer is checked against its CID and kept in memory, never written to  *)
-(* the store. A reader not in `Through` reads the store alone. A           *)
-(* preflight's transaction may be refused on itself alone (a bad          *)
-(* signature, the wrong chain, the state-growth floor): kind "bad". One    *)
-(* refused on the state (a stale nonce) is kind "stale": its verdict needs *)
-(* the state read, so a gap sends it through peers like a good one.        *)
+(* the store. A reader not in `Through` reads the store alone.            *)
+(*                                                                         *)
+(* Preflight reads the chain's spec (`Spec`, through the snapshot's spec   *)
+(* CID) before the state. A transaction is refused on itself alone (a bad  *)
+(* signature, the wrong chain): kind "bad", which reads nothing. One over  *)
+(* the state-growth floor (kind "floor") is refused once the spec is read; *)
+(* one with a stale nonce (kind "stale") once the account's path is read.  *)
+(* A gap in what a verdict reads sends it through peers like a good one.   *)
 (*                                                                         *)
 (* Peers: an honest one, up or not (`up`), and liars, whose forged copies  *)
 (* fail the CID check. A refused read (`unavailable`) is retried; the      *)
@@ -26,10 +29,10 @@ EXTENDS Naturals
 
 CONSTANTS Readers, Through, MaxLosses
 
-Nodes == {"R", "Acc", "A1", "Oth"}
+Nodes == {"Spec", "R", "Acc", "A1", "Oth"}
 Targets == {"A1", "Oth"}
 Path(t) == CASE t = "A1" -> {"R", "Acc", "A1"} [] t = "Oth" -> {"R", "Oth"}
-Kinds == {"good", "bad", "stale"}
+Kinds == {"good", "bad", "floor", "stale"}
 KindsOf(r) == IF r = "preflight" THEN Kinds ELSE {"good"}
 Status == {"wanted", "answered", "refused", "unavailable"}
 
@@ -82,17 +85,21 @@ Retry(r) ==
     /\ req' = [req EXCEPT ![r].st = "wanted"]
     /\ UNCHANGED <<held, mem, up, losses, askedBad>>
 
+(* What a read's verdict reads, and the verdict once it is read.           *)
+Need(r) ==
+    CASE req[r].k = "bad" -> {}
+      [] req[r].k = "floor" -> {"Spec"}
+      [] OTHER -> (IF r = "preflight" THEN {"Spec"} ELSE {}) \cup Path(req[r].t)
+Final(k) == IF k = "good" THEN "answered" ELSE "refused"
+
 (* The verdict from this store alone.                                      *)
-LocalVerdict(r) ==
-    IF req[r].k = "bad" THEN "refused"
-    ELSE IF Path(req[r].t) \subseteq held THEN (IF req[r].k = "stale" THEN "refused" ELSE "answered")
-    ELSE "unavailable"
+LocalVerdict(r) == IF Need(r) \subseteq held THEN Final(req[r].k) ELSE "unavailable"
 
 (* Judged again through peers: memory first, then the honest peer if up.   *)
 ReadThrough(r) ==
-    LET need == Path(req[r].t)
+    LET need == Need(r)
         missing == {n \in need \ held : mem[n] = "none"}
-        done == IF req[r].k = "good" THEN "answered" ELSE "refused"
+        done == Final(req[r].k)
     IN  /\ askedBad' = (askedBad \/ req[r].k = "bad")
         /\ IF missing = {} \/ up
            THEN \E got \in [missing -> Served] :
@@ -126,6 +133,12 @@ TypeOK ==
 
 (* An answer is judged on the true state: no forged copy is read.          *)
 RightAnswers == \A r \in Readers : req[r].st = "answered" => req[r].right
+
+(* Each verdict is the transaction's own: a good read is answered, and    *)
+(* only a read that should be refused is.                                  *)
+RightVerdicts ==
+    \A r \in Readers : /\ (req[r].st = "answered" => req[r].k = "good")
+                      /\ (req[r].st = "refused" => req[r].k # "good")
 
 (* What the store refuses on the transaction alone costs no peer request.  *)
 StoreFirst == ~askedBad

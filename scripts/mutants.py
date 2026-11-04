@@ -238,6 +238,8 @@ MUTANTS = [
      'Through = {"preflight", "execute"}', 'Through = {"execute"}'),
     ("peer-answers-unchecked", "RightAnswers", "TipReads_Main.cfg", TR,
      'Served == {"true"}', 'Served == {"true", "forged"}'),
+    ("peer-read-refuses-good", "RightVerdicts", "TipReads_Main.cfg", TR,
+     "        done == Final(req[r].k)\n", '        done == "refused"\n'),
     ("refusal-asks-peers", "StoreFirst", "TipReads_Main.cfg", TR,
      'LocalVerdict(r) = "unavailable"\n', 'LocalVerdict(r) # "answered"\n'),
 ]

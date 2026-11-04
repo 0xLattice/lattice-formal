@@ -1329,17 +1329,21 @@ A reader in `Through` judges from the store first. Only when that verdict is
 `unavailable` does it judge again through peers: memory first, then the
 honest peer if it is up. What a peer answers is checked against its CID and
 kept in memory, never written to the store. Liars' forged copies fail the
-check. A reader outside `Through` reads the store alone. A preflight's
-transaction may be refused on itself (a bad signature, the wrong chain, the
-state-growth floor), or on the state (a stale nonce): that verdict needs the
-state read, so a gap sends it through peers like a valid one. A read refused
-as `unavailable` is retried, fairly.
+check. A reader outside `Through` reads the store alone. A read refused as
+`unavailable` is retried, fairly.
+
+Preflight reads the chain's spec (`Spec`, through the snapshot's spec CID)
+before the state. A transaction may be refused on itself (a bad signature,
+the wrong chain), which reads nothing; over the state-growth floor, once the
+spec is read; or on a stale nonce, once the account's path is read. A gap in
+what a verdict reads sends it through peers, refusal or not.
 
 | Property | Statement |
 |---|---|
 | `RightAnswers` | every answer is judged on the true state: no forged copy is read |
-| `StoreFirst` | a transaction refused on itself costs no request to peers |
-| `Answered` | if the honest peer serves from some point on, every read is answered or refused on itself, whatever the store lost |
+| `RightVerdicts` | a valid read is never refused, and only a read that should be refused is |
+| `StoreFirst` | a transaction refused on itself (signature, chain) costs no request to peers |
+| `Answered` | if the honest peer serves from some point on, every read reaches its verdict (with `RightVerdicts`, the right one), whatever the store lost |
 
 | Config | Models |
 |---|---|
@@ -1359,6 +1363,7 @@ as `unavailable` is retried, fairly.
 |---|---|
 | preflight reads the store alone (lattice-node main: the testnet failure) | `Answered` |
 | a peer's answer is used without the CID check | `RightAnswers` |
+| a read through peers refuses a valid transaction | `RightVerdicts` |
 | preflight asks peers before the store's refusal | `StoreFirst` |
 
 ### Readings and limits
@@ -1367,6 +1372,11 @@ as `unavailable` is retried, fairly.
   block rewrites costs a peer read on every first use after memory empties,
   and it depends on some peer (an `all` host, the producer) still holding the
   node. Cost and fetch budgets are not modelled.
+- **A host has an overlay.** Without one (`remote` nil) PR #48 skips the
+  read through peers, and preflight reads the store alone as on main.
+- **The CID check is assumed.** A forged copy never reaches memory
+  (`Served`), so `RightAnswers` fails only if the check is taken out: it
+  guards the model, it does not test the check.
 - **A read through peers is atomic.** `reading` holds one session, so memory
   emptying mid-read is not modelled.
 - **One tip.** Tip moves and the job's epoch check are not modelled; a read
