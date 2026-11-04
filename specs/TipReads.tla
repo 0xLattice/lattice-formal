@@ -14,7 +14,9 @@
 (* answer is checked against its CID and kept in memory, never written to  *)
 (* the store. A reader not in `Through` reads the store alone. A           *)
 (* preflight's transaction may be refused on itself alone (a bad          *)
-(* signature, the wrong chain, a stale nonce): kind "bad".                 *)
+(* signature, the wrong chain, the state-growth floor): kind "bad". One    *)
+(* refused on the state (a stale nonce) is kind "stale": its verdict needs *)
+(* the state read, so a gap sends it through peers like a good one.        *)
 (*                                                                         *)
 (* Peers: an honest one, up or not (`up`), and liars, whose forged copies  *)
 (* fail the CID check. A refused read (`unavailable`) is retried; the      *)
@@ -27,7 +29,8 @@ CONSTANTS Readers, Through, MaxLosses
 Nodes == {"R", "Acc", "A1", "Oth"}
 Targets == {"A1", "Oth"}
 Path(t) == CASE t = "A1" -> {"R", "Acc", "A1"} [] t = "Oth" -> {"R", "Oth"}
-KindsOf(r) == IF r = "preflight" THEN {"good", "bad"} ELSE {"good"}
+Kinds == {"good", "bad", "stale"}
+KindsOf(r) == IF r = "preflight" THEN Kinds ELSE {"good"}
 Status == {"wanted", "answered", "refused", "unavailable"}
 
 (* What the read keeps of a peer's answer: the CID check refuses a forged  *)
@@ -49,7 +52,7 @@ NoMem == [n \in Nodes |-> "none"]
 Init ==
     /\ held = Nodes
     /\ mem = NoMem
-    /\ req \in {f \in [Readers -> [st : {"wanted"}, t : Targets, k : {"good", "bad"}, right : {TRUE}]] :
+    /\ req \in {f \in [Readers -> [st : {"wanted"}, t : Targets, k : Kinds, right : {TRUE}]] :
                   \A r \in Readers : f[r].k \in KindsOf(r)}
     /\ up \in BOOLEAN
     /\ losses = 0
@@ -82,14 +85,14 @@ Retry(r) ==
 (* The verdict from this store alone.                                      *)
 LocalVerdict(r) ==
     IF req[r].k = "bad" THEN "refused"
-    ELSE IF Path(req[r].t) \subseteq held THEN "answered"
+    ELSE IF Path(req[r].t) \subseteq held THEN (IF req[r].k = "stale" THEN "refused" ELSE "answered")
     ELSE "unavailable"
 
 (* Judged again through peers: memory first, then the honest peer if up.   *)
 ReadThrough(r) ==
     LET need == Path(req[r].t)
         missing == {n \in need \ held : mem[n] = "none"}
-        done == IF req[r].k = "bad" THEN "refused" ELSE "answered"
+        done == IF req[r].k = "good" THEN "answered" ELSE "refused"
     IN  /\ askedBad' = (askedBad \/ req[r].k = "bad")
         /\ IF missing = {} \/ up
            THEN \E got \in [missing -> Served] :
@@ -111,14 +114,14 @@ Judge(r) ==
 Next ==
     \/ \E n \in Nodes : Lose(n)
     \/ Evict \/ Flip
-    \/ \E r \in Readers : Judge(r) \/ Retry(r) \/ \E t \in Targets, k \in {"good", "bad"} : Ask(r, t, k)
+    \/ \E r \in Readers : Judge(r) \/ Retry(r) \/ \E t \in Targets, k \in Kinds : Ask(r, t, k)
 
 Spec == Init /\ [][Next]_vars /\ \A r \in Readers : WF_vars(Judge(r)) /\ WF_vars(Retry(r))
 
 TypeOK ==
     /\ held \subseteq Nodes
     /\ mem \in [Nodes -> {"none", "true", "forged"}]
-    /\ req \in [Readers -> [st : Status, t : Targets, k : {"good", "bad"}, right : BOOLEAN]]
+    /\ req \in [Readers -> [st : Status, t : Targets, k : Kinds, right : BOOLEAN]]
     /\ up \in BOOLEAN /\ losses \in 0..MaxLosses /\ askedBad \in BOOLEAN
 
 (* An answer is judged on the true state: no forged copy is read.          *)

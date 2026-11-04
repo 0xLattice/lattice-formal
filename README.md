@@ -1330,8 +1330,10 @@ A reader in `Through` judges from the store first. Only when that verdict is
 honest peer if it is up. What a peer answers is checked against its CID and
 kept in memory, never written to the store. Liars' forged copies fail the
 check. A reader outside `Through` reads the store alone. A preflight's
-transaction may be refused on itself (a bad signature, the wrong chain, a
-stale nonce). A read refused as `unavailable` is retried, fairly.
+transaction may be refused on itself (a bad signature, the wrong chain, the
+state-growth floor), or on the state (a stale nonce): that verdict needs the
+state read, so a gap sends it through peers like a valid one. A read refused
+as `unavailable` is retried, fairly.
 
 | Property | Statement |
 |---|---|
@@ -1369,6 +1371,14 @@ stale nonce). A read refused as `unavailable` is retried, fairly.
   emptying mid-read is not modelled.
 - **One tip.** Tip moves and the job's epoch check are not modelled; a read
   is of the current tip's state.
+- **A missing node is always `unavailable`.** Checked in the code, not
+  modelled: every state read in `TransactionPreflight.classify` resolves
+  through cashew, which rethrows the store fetcher's `FetcherError.notFound`,
+  and the classifier maps that to unavailable. A gap never reads as an absent
+  key (a `.future` or `.invalid` verdict that would skip the peer read).
+- **Not every `unavailable` is a gap.** A child withdrawal whose receipt or
+  deposit this node does not hold yet is `unavailable` too, and with PR #48
+  each retry of it opens a read through peers.
 - **Anyone can make a host read through peers** by submitting a correctly
   signed transaction that touches a gap. The overlay's budget bounds this;
   the model does not.
