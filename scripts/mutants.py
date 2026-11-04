@@ -16,10 +16,11 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TEMPORAL = {"WorkMonotone", "VerdictsPermanent", "CatchesUp", "NothingPruned",
             "RevisionAdvances", "FailureLeavesGraphUnchanged", "StagedBecomesVisible",
-            "Converges", "PeerConverges"}
+            "Converges", "PeerConverges", "Answered"}
 
 # (name, property that must go red, config, file, old text, new text[, witness])
 DCG = "DerivedChildGrinds.tla"
+TR = "TipReads.tla"
 MUTANTS = [
     # Single-chain fork choice (ForkChoice.tla)
     ("exclusion-removes-weight", "WorkMonotone", "MCMain.cfg", "ForkChoice.tla",
@@ -230,6 +231,17 @@ MUTANTS = [
      r"Drop(c, p) == lack' = lack \cup {<<c, p>>} /\ UNCHANGED honest", r"Drop(c, p) == lack' = {} /\ honest' = FALSE"),
     ("budget-drop-no-reask", "PeerConverges", "DerivedChildGrinds_PeerPush.cfg", DCG,
      "    /\\ hosted /\\ <<c, p>> \\in lack\n", "    /\\ FALSE /\\ hosted /\\ <<c, p>> \\in lack\n"),
+
+    # Reads of a tip's state through a store with gaps (TipReads.tla):
+    # lattice-node PR #48 and main before it.
+    ("preflight-reads-store-alone", "Answered", "TipReads_Main.cfg", "TipReads_Main.cfg",
+     'Through = {"preflight", "execute"}', 'Through = {"execute"}'),
+    ("peer-answers-unchecked", "RightAnswers", "TipReads_Main.cfg", TR,
+     'Served == {"true"}', 'Served == {"true", "forged"}'),
+    ("peer-read-refuses-good", "RightVerdicts", "TipReads_Main.cfg", TR,
+     "        done == Final(req[r].k)\n", '        done == "refused"\n'),
+    ("refusal-asks-peers", "StoreFirst", "TipReads_Main.cfg", TR,
+     'LocalVerdict(r) = "unavailable"\n', 'LocalVerdict(r) # "answered"\n'),
 ]
 
 

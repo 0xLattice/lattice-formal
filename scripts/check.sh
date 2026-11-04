@@ -10,7 +10,8 @@ for cfg in MCMain.cfg MCGap.cfg MCTie.cfg \
            MCRecovery_Main.cfg MCRecovery_Node.cfg \
            DerivedChildGrinds_Main.cfg DerivedChildGrinds_Defer.cfg DerivedChildGrinds_Parent.cfg \
            DerivedChildGrinds_AuthorPush.cfg DerivedChildGrinds_Grow.cfg DerivedChildGrinds_PeerPush.cfg \
-           DerivedChildGrinds_Index.cfg DerivedChildGrinds_ParentIndex.cfg; do
+           DerivedChildGrinds_Index.cfg DerivedChildGrinds_ParentIndex.cfg \
+           TipReads_Main.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "No error has been found" <<<"$out"; then
     echo "MODEL $cfg: pass ($(grep -o '[0-9,]* distinct states found, 0 states left' <<<"$out" | tail -1 | cut -d' ' -f1) distinct states)"
@@ -26,7 +27,8 @@ for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBacke
             "MCSwapReorg_WDemanderSafe.cfg NoSafeReleaseBesideParentFork" \
             "MCRecovery_WLost.cfg NoLostBatchRecovered" "MCRecovery_WConflict.cfg NoConflictRefused" \
             "MCRecovery_WOrder.cfg RevisionMonotone" "MCRecovery_RevisionProbe.cfg RevisionMonotone" \
-            "DerivedChildGrinds_Credit.cfg NoCredit"; do
+            "DerivedChildGrinds_Credit.cfg NoCredit" \
+            "TipReads_PeerRead.cfg NoPeerRead"; do
   set -- $pair
   out="$("$root/scripts/tlc.sh" "$1" 2>&1)"
   if grep -q "Invariant $2 is violated" <<<"$out"; then
@@ -36,7 +38,7 @@ for pair in "MCHierarchyFork_W.cfg NoBackedFork" "MCHierarchyFork_WG.cfg NoBacke
   fi
 done
 # Liveness findings: each must FAIL (TLC names no property; the cfg checks one).
-for cfg in DerivedChildGrinds_StopOnCredit.cfg; do
+for cfg in DerivedChildGrinds_StopOnCredit.cfg TipReads_Rpc.cfg; do
   out="$("$root/scripts/tlc.sh" "$cfg" 2>&1)"
   if grep -q "Temporal properties were violated" <<<"$out"; then
     echo "WITNESS $cfg: reached (liveness violated, as required)"
